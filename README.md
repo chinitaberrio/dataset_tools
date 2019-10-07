@@ -1,7 +1,7 @@
 h264_bag_tools is a c++ program that takes a bag file + h.264 files and replays them as if on a live system. The bag
 file must contain frame_info_msg messages that link each frame of the h.264 video files to the bag. The playback
-tool publishes topics for the uncorrected images /gmsl/<camera name>/image_color and the corrected images (given the
-camera_info_msgs) on /gmsl/<camera name>/image_rect_color.
+tool publishes topics for the uncorrected images /gmsl/\<camera name\>/image_color and the corrected images (given the
+camera_info_msgs) on /gmsl/\<camera name\>/image_rect_color.
 
 NOTE: The images are only extracted from the h.264 file if someone has subscribed to the topic. Because the h.264
 encoding requires a sequence of frames, all of the images to the current time must be read in sequence. This means that
