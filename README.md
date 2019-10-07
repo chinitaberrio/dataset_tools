@@ -10,18 +10,18 @@ the images up to the current time. This can be a bit slow if you subscribe to th
 starts.
 
 parameters:
-    <param name="output_width" value="640" />
+    name="output_width" value in pixels
     set the width of the images
 
-    <param name="output_height" value="480" />
+    name="output_height" value in pixels
     set the height of the images
 
     NOTE: if either of the width/height parameters are not defined (or set to 0) the original image size is used
 
-    <param name="limit_playback_speed" value="true" />
+    name="limit_playback_speed" value is boolean
     Either playback the bag + images as fast as possible, or restrict to (close to) realtime playback
 
-    <param name="bag_file" value="$(arg bag_file_name)"/>
+    name="bag_file" value is a string
     The name of the bag file to read. The h.264 files and camera names are automatically extracted from the bag file name
     using the first part of the bag file name (without the extension) and the camera name separated using an '_'. Note
     that this is the standard format for the files used in the ACFR campus dataset
