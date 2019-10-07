@@ -1,0 +1,40 @@
+<package>
+  <name>h264_bag_tools</name>
+  <version>0.0.1</version>
+  <description>description of the nodelet goes here.</description>
+  <maintainer email="s.worrall@acfr.usyd.edu.au">Stewart Worrall</maintainer>
+  <author>Stewart Worrall</author>
+  <license>BSD</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>nodelet</build_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend>rosbag_storage</build_depend>
+  <build_depend>rosbag</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_depend>nav_msgs</build_depend>
+  <build_depend>sensor_msgs</build_depend>
+  <build_depend>cv_bridge</build_depend>
+  <build_depend>gmsl_frame_msg</build_depend>
+  <build_depend>image_transport</build_depend>
+
+  <run_depend>nodelet</run_depend>
+  <run_depend>roscpp</run_depend>
+  <run_depend>rosbag</run_depend>
+  <run_depend>gmsl_frame_msg</run_depend>
+
+  <run_depend>rosbag_storage</run_depend>
+  <run_depend>std_msgs</run_depend>
+  <run_depend>nav_msgs</run_depend>
+  <run_depend>sensor_msgs</run_depend>
+  <run_depend>cv_bridge</run_depend>
+  <run_depend>image_transport</run_depend>
+
+
+  <export>
+    <nodelet plugin="${prefix}/nodelet_definition.xml"/>
+  </export>
+</package>
+
+

@@ -1,0 +1,14 @@
+<launch>
+  <node pkg="h264_bag_tools" type="h264_bag_tools_node" name="h264_bag_tools_node" output="screen" required="true">
+
+    <param name="output_width" value="640" />
+    <param name="output_height" value="480" />
+    <param name="limit_playback_speed" value="true" />
+    <param name="bag_file" value="$(arg bag_file_name)"/>
+
+  </node>
+
+</launch>
+
+
+
