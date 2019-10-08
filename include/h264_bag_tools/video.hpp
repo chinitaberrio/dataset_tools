@@ -17,7 +17,7 @@ public:
   Video() {}
 
   bool InitialiseVideo(std::string camera_name, std::string video_filename);
-  void InitialiseCameraInfo(sensor_msgs::CameraInfo::ConstPtr camera_info);
+  void InitialiseCameraInfo(sensor_msgs::CameraInfo &camera_info);
 
   bool valid_camera_info;
 

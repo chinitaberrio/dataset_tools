@@ -2,9 +2,9 @@
 
 
 
-void Video::InitialiseCameraInfo(sensor_msgs::CameraInfo::ConstPtr camera_info) {
+void Video::InitialiseCameraInfo(sensor_msgs::CameraInfo &camera_info) {
 
-  camera_info_msg = *camera_info;
+  camera_info_msg = camera_info;
 
   uint32_t image_width = camera_info_msg.width;
   uint32_t image_height = camera_info_msg.height;

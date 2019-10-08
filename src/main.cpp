@@ -19,6 +19,8 @@
 #include "video.hpp"
 
 
+// todo: fix the camera_info_msg for scale
+
 // this main function allows the nodelet to be compiled as a node.
 //  this has been done because there is a problem in ros melodic where
 //  the rosbag library has a conflict with the compression functions
@@ -121,16 +123,39 @@ void h264_bag_tools::onInit() {
     if (keep_last_of_string(topic, "/") == "camera_info") {
       std::string camera_name = keep_last_of_string(remove_last_of_string(topic, "/"), "/");
 
-      if (!videos[camera_name].valid_camera_info) {
-        sensor_msgs::CameraInfo::ConstPtr s = m.instantiate<sensor_msgs::CameraInfo>();
-        if (s != NULL) {
-          videos[camera_name].InitialiseCameraInfo(s);
+      sensor_msgs::CameraInfo::ConstPtr s = m.instantiate<sensor_msgs::CameraInfo>();
+      if (s != NULL) {
+        sensor_msgs::CameraInfo scaled_info_msg = *s;
+
+        if (scaled_height && scaled_width) {
+          double scale_y = static_cast<double>(scaled_height) / s->height;
+          double scale_x = static_cast<double>(scaled_width) / s->width;
+
+          scaled_info_msg.height = scaled_height;
+          scaled_info_msg.width = scaled_width;
+
+          scaled_info_msg.K[0] = scaled_info_msg.K[0] * scale_x;  // fx
+          scaled_info_msg.K[2] = scaled_info_msg.K[2] * scale_x;  // cx
+          scaled_info_msg.K[4] = scaled_info_msg.K[4] * scale_y;  // fy
+          scaled_info_msg.K[5] = scaled_info_msg.K[5] * scale_y;  // cy
+
+          scaled_info_msg.P[0] = scaled_info_msg.P[0] * scale_x;  // fx
+          scaled_info_msg.P[2] = scaled_info_msg.P[2] * scale_x;  // cx
+          scaled_info_msg.P[3] = scaled_info_msg.P[3] * scale_x;  // T
+          scaled_info_msg.P[5] = scaled_info_msg.P[5] * scale_y;  // fy
+          scaled_info_msg.P[6] = scaled_info_msg.P[6] * scale_y;  // cy
         }
+
+        if (!videos[camera_name].valid_camera_info) {
+          videos[camera_name].InitialiseCameraInfo(scaled_info_msg);
+        }
+
+        pub_iter->second.publish(scaled_info_msg);
       }
     }
 
     // For each frame info msg, find the corresponding h.264 frame and publish/convert if necessary
-    if (keep_last_of_string(topic, "/") == "frame_info") {
+    else if (keep_last_of_string(topic, "/") == "frame_info") {
 
       // initialise the frame start time
       if (start_frame_time == ros::Time(0)){
@@ -180,7 +205,7 @@ void h264_bag_tools::onInit() {
               while (ros::ok() && current_video.frame_counter < s->frame_counter) {
                 current_video.video_device >> new_frame;
                 current_video.frame_counter++;
-                NODELET_INFO_STREAM("throwing away frame for camera " << camera_name);
+                NODELET_INFO_STREAM_THROTTLE(0.5, "throwing away frame for camera " << camera_name);
               }
             }
             // todo: this doesn't seem to work for h.264 probably due to the way it is encoded
@@ -217,6 +242,10 @@ void h264_bag_tools::onInit() {
                 }
                 else if (current_video.camera_info_msg.distortion_model == "equidistant") {
                   cv::remap(new_frame, output_image, current_video.map1, current_video.map2, cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+                }
+                else {
+                  NODELET_INFO_STREAM("Unknown distortion model, skipping " << current_video.camera_info_msg.distortion_model);
+                  continue;
                 }
 
                 if (scaled_height && scaled_width) {
@@ -259,10 +288,15 @@ void h264_bag_tools::onInit() {
           }
         }
       }
+
+      // repubish the frame info message
+      pub_iter->second.publish(m);
+    }
+    else {
+      // publish the remaining messages
+      pub_iter->second.publish(m);
     }
 
-    // publish the topics, even the camera_info/frame_info ones
-    pub_iter->second.publish(m);
 
     // Spin once so that any other ros controls/pub/sub can be actioned
     ros::spinOnce();
