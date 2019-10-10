@@ -19,7 +19,7 @@
 #include "video.hpp"
 
 
-// todo: fix the camera_info_msg for scale
+// Nodelet problem is https://github.com/ros/ros_comm/issues/1474
 
 // this main function allows the nodelet to be compiled as a node.
 //  this has been done because there is a problem in ros melodic where
