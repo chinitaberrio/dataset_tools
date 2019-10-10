@@ -127,6 +127,7 @@ void h264_bag_tools::onInit() {
       if (s != NULL) {
         sensor_msgs::CameraInfo scaled_info_msg = *s;
 
+
         if (scaled_height && scaled_width) {
           double scale_y = static_cast<double>(scaled_height) / s->height;
           double scale_x = static_cast<double>(scaled_width) / s->width;
@@ -219,23 +220,37 @@ void h264_bag_tools::onInit() {
 
           // check that the frame counter aligns with the number of frames in the video
           if (current_video.frame_counter == s->frame_counter) {
+
             cv::Mat new_frame;
-            current_video.video_device >> new_frame;
+
+            if (scaled_height && scaled_width) {
+              cv::Mat unresized_frame;
+              current_video.video_device >> unresized_frame;
+
+              cv::Size reduced_size = cv::Size(scaled_width, scaled_height);
+              cv::resize(unresized_frame, new_frame, reduced_size);
+            }
+            else {
+              current_video.video_device >> new_frame;
+            }
+
             current_video.frame_counter++;
+
+
 
             if (current_video.valid_camera_info) {
 
-              uint32_t image_width = current_video.camera_info_msg.width;
-              uint32_t image_height = current_video.camera_info_msg.height;
+              //uint32_t image_width = current_video.camera_info_msg.width;
+              //uint32_t image_height = current_video.camera_info_msg.height;
 
-              cv::Size image_size = cv::Size(image_width, image_height);
+              //cv::Size image_size = cv::Size(image_width, image_height);
 
               cv_bridge::CvImagePtr cv_ptr(new cv_bridge::CvImage);
 
               // Check if someone wants the corrected (undistorted) camera images
               if (videos[camera_name].corrected_publisher.getNumSubscribers() > 0) {
-                cv::Mat output_image, scaled_image;
-                cv::Size reduced_size;
+                cv::Mat output_image;
+                //cv::Size reduced_size;
 
                 if (current_video.camera_info_msg.distortion_model == "rational_polynomial") {
                   cv::undistort(new_frame, output_image, current_video.camera_matrix, current_video.distance_coeffs);
@@ -248,7 +263,7 @@ void h264_bag_tools::onInit() {
                   continue;
                 }
 
-                if (scaled_height && scaled_width) {
+                /*if (scaled_height && scaled_width) {
                   cv::Size reduced_size = cv::Size(scaled_width, scaled_height);
                   cv::resize(output_image, scaled_image, reduced_size); //resize image
                   cv_ptr->image = scaled_image;
@@ -256,7 +271,9 @@ void h264_bag_tools::onInit() {
                 else {
                   cv_ptr->image = output_image;
                 }
+                */
 
+                cv_ptr->image = output_image;
                 cv_ptr->encoding = "bgr8";
                 cv_ptr->header.stamp = camera_stamp;
                 cv_ptr->header.frame_id = frame_id_dict[camera_name];
@@ -266,10 +283,10 @@ void h264_bag_tools::onInit() {
 
               // Check if someone wants the uncorrected camera images
               if (videos[camera_name].uncorrected_publisher.getNumSubscribers() > 0) {
-                cv::Mat scaled_image;
-                cv::Size reduced_size;
+                //cv::Mat scaled_image;
+                //cv::Size reduced_size;
 
-                if (scaled_height && scaled_width) {
+                /*if (scaled_height && scaled_width) {
                   reduced_size = cv::Size(scaled_width, scaled_height);
                   cv::resize(new_frame, scaled_image, reduced_size);//resize image
                   cv_ptr->image = scaled_image;
@@ -277,7 +294,9 @@ void h264_bag_tools::onInit() {
                 else {
                   cv_ptr->image = new_frame;
                 }
+                 */
 
+                cv_ptr->image = new_frame;
                 cv_ptr->encoding = "bgr8";
                 cv_ptr->header.stamp = camera_stamp;
                 cv_ptr->header.frame_id = frame_id_dict[camera_name];
