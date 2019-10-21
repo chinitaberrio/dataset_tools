@@ -94,10 +94,10 @@ void h264_bag_tools::onInit() {
   rosbag::Bag bag;
   bag.open(bag_file_name);
 
-  if (!bag.isOpen()) {
+  /*if (!bag.isOpen()) {
     NODELET_INFO_STREAM("Could not OPEN bagfile " << bag_file_name);
     return;
-  }
+  }*/
 
   rosbag::View view(bag);
   AdvertiseTopics(view);
@@ -147,7 +147,25 @@ void h264_bag_tools::onInit() {
 
       gmsl_frame_msg::FrameInfo::ConstPtr s = m.instantiate<gmsl_frame_msg::FrameInfo>();
       if (s != NULL) {
+        
+        ros::Time temp_stamp,camera_stamp,temp;
+      
+        if (save_time_diff )
+           { 
 
+           temp = ros::Time ((s->camera_timestamp)/1000000,((s->camera_timestamp)%1000000)*1000);
+           dur=s->header.stamp-temp;
+           save_time_diff=false;
+           }
+         temp_stamp=  ros::Time ((s->camera_timestamp)/1000000,((s->camera_timestamp)%1000000)*1000);
+         
+         if  (fabs(dur.toSec())>0.5)
+         camera_stamp=temp_stamp+dur;
+         else
+         camera_stamp=temp_stamp;
+        
+        
+         
         // Check that someone has subscribed to this camera's images
         if (!(videos[camera_name].corrected_publisher.getNumSubscribers() == 0 &&
             videos[camera_name].uncorrected_publisher.getNumSubscribers() == 0))
@@ -211,7 +229,7 @@ void h264_bag_tools::onInit() {
                 }
 
                 cv_ptr->encoding = "bgr8";
-                cv_ptr->header.stamp = s->header.stamp;
+                cv_ptr->header.stamp = camera_stamp;
                 cv_ptr->header.frame_id = frame_id_dict[camera_name];
 
                 current_video.corrected_publisher.publish(cv_ptr->toImageMsg());
@@ -232,7 +250,7 @@ void h264_bag_tools::onInit() {
                 }
 
                 cv_ptr->encoding = "bgr8";
-                cv_ptr->header.stamp = s->header.stamp;
+                cv_ptr->header.stamp = camera_stamp;
                 cv_ptr->header.frame_id = frame_id_dict[camera_name];
 
                 current_video.uncorrected_publisher.publish(cv_ptr->toImageMsg());

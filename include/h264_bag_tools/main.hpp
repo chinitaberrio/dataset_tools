@@ -54,6 +54,12 @@ private:
   ros::NodeHandle public_nh;
   image_transport::ImageTransport image_transport;
 
+  bool save_time_diff = true;
+  ros::Duration dur;
+
+
+
+
 
 };
 
