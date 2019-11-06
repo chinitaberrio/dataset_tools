@@ -176,21 +176,20 @@ void h264_bag_tools::onInit() {
         
         ros::Time temp_stamp,camera_stamp,temp;
       
-        if (save_time_diff )
-           { 
-
-           temp = ros::Time ((s->camera_timestamp)/1000000,((s->camera_timestamp)%1000000)*1000);
+        if (save_time_diff ) {
+           temp = ros::Time((s->camera_timestamp) / 1000000, ((s->camera_timestamp) % 1000000) * 1000);
            dur=s->header.stamp-temp;
            save_time_diff=false;
-           }
-         temp_stamp=  ros::Time ((s->camera_timestamp)/1000000,((s->camera_timestamp)%1000000)*1000);
+        }
+
+        temp_stamp = ros::Time((s->camera_timestamp) / 1000000, ((s->camera_timestamp) % 1000000) * 1000);
          
-         if  (fabs(dur.toSec())>0.5)
-         camera_stamp=temp_stamp+dur;
-         else
-         camera_stamp=temp_stamp;
-        
-        
+        if (fabs(dur.toSec()) > 0.5) {
+          camera_stamp = temp_stamp + dur;
+        }
+        else {
+          camera_stamp = temp_stamp;
+        }
          
         // Check that someone has subscribed to this camera's images
         if (!(videos[camera_name].corrected_publisher.getNumSubscribers() == 0 &&
@@ -285,7 +284,6 @@ void h264_bag_tools::onInit() {
       pub_iter->second.publish(m);
     }
 
-
     // Spin once so that any other ros controls/pub/sub can be actioned
     ros::spinOnce();
 
@@ -313,6 +311,13 @@ h264_bag_tools::AdvertiseTopics(rosbag::View &view) {
     if (pub_iter == publishers.end()) {
 
       ros::AdvertiseOptions opts = rosbag::createAdvertiseOptions(c, 10);
+
+      // latch the topic tf_static
+      if (c->topic == "/tf_static") {
+        NODELET_INFO_STREAM("latching topic " << c->topic);
+        opts.latch = true;
+      }
+
       ros::Publisher pub = public_nh.advertise(opts);
       publishers.insert(publishers.begin(), std::pair<std::string, ros::Publisher>(callerid_topic, pub));
 
