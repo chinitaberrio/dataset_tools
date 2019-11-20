@@ -1,7 +1,7 @@
 <package>
-  <name>h264_bag_tools</name>
+  <name>h264_bag_playback</name>
   <version>0.0.1</version>
-  <description>description of the nodelet goes here.</description>
+  <description>Project to synchronise the playback of h264 files and ros bags with frame_info messages included.</description>
   <maintainer email="s.worrall@acfr.usyd.edu.au">Stewart Worrall</maintainer>
   <author>Stewart Worrall</author>
   <license>BSD</license>

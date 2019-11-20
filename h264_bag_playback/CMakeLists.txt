@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(h264_bag_tools)
+project(h264_bag_playback)
 
 find_package(catkin REQUIRED COMPONENTS nodelet
 	rosbag
@@ -20,7 +20,7 @@ include_directories(${catkin_INCLUDE_DIRS},
   include)
 
 catkin_package(
-  LIBRARIES h264_bag_tools
+  LIBRARIES ${PROJECT_NAME}
   CATKIN_DEPENDS nodelet 
 	roscpp
 	rosbag
@@ -38,30 +38,30 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 
 ## Create the nodelet tutorial library
-add_executable(h264_bag_tools_node src/main.cpp src/video.cpp src/helper_functions.cpp)
-target_link_libraries(h264_bag_tools_node
+add_executable(${PROJECT_NAME}_node src/main.cpp src/video.cpp src/helper_functions.cpp)
+target_link_libraries(${PROJECT_NAME}_node
 		${catkin_LIBRARIES}
 		${OpenCV_LIBS})
 
-add_library(h264_bag_tools src/main.cpp src/video.cpp src/helper_functions.cpp)
-target_link_libraries(h264_bag_tools
+add_library(${PROJECT_NAME} src/main.cpp src/video.cpp src/helper_functions.cpp)
+target_link_libraries(${PROJECT_NAME}
 		${catkin_LIBRARIES}
 		${OpenCV_LIBS})
 
 if(catkin_EXPORTED_LIBRARIES)
-  add_dependencies(h264_bag_tools
+  add_dependencies(${PROJECT_NAME}
 		  ${catkin_EXPORTED_LIBRARIES}
 		  ${catkin_LIBRARIES}
 		  ${OpenCV_LIBS})
 endif()
 
-install(TARGETS h264_bag_tools_node
+install(TARGETS ${PROJECT_NAME}_node
 		ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 		LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 		RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
 ## Mark the nodelet library for installations
-install(TARGETS h264_bag_tools
+install(TARGETS ${PROJECT_NAME}
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
