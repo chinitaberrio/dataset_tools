@@ -1,4 +1,4 @@
-#include "main.hpp"
+#include "h264_bag_playback.hpp"
 #include <glob.h>
 
 #include <opencv2/opencv.hpp>
@@ -27,10 +27,10 @@
 //  of the opencv library causing a run time seg fault.
 int main(int argc, char **argv) {
   //Initialize Node and handles
-  ros::init(argc, argv, "h264_bag_tools_node");
+  ros::init(argc, argv, "h264_bag_playback_node");
   ros::NodeHandle n;
 
-  dataset_toolkit::h264_bag_tools bag_tools;
+  dataset_toolkit::H264BagPlayback bag_tools;
   bag_tools.bypass_init();
 
   return 0;
@@ -41,11 +41,11 @@ namespace dataset_toolkit
 {
 
 
-h264_bag_tools::h264_bag_tools() : private_nh("~"), image_transport(public_nh) {
+H264BagPlayback::H264BagPlayback() : private_nh("~"), image_transport(public_nh) {
 }
 
 
-void h264_bag_tools::onInit() {
+void H264BagPlayback::onInit() {
 
   int scaled_width;
   private_nh.param("output_width", scaled_width, 0);
@@ -297,7 +297,7 @@ void h264_bag_tools::onInit() {
 
 
 void
-h264_bag_tools::AdvertiseTopics(rosbag::View &view) {
+H264BagPlayback::AdvertiseTopics(rosbag::View &view) {
 
   // Create a publisher and advertise for all of our message types
   for(const rosbag::ConnectionInfo* c: view.getConnections())

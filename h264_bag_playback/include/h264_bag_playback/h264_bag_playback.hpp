@@ -18,10 +18,10 @@
 namespace dataset_toolkit
 {
 
-class h264_bag_tools : public nodelet::Nodelet
+class H264BagPlayback : public nodelet::Nodelet
 {
 public:
-  h264_bag_tools();
+  H264BagPlayback();
 
   void bypass_init() {
     this->onInit();
@@ -63,5 +63,5 @@ private:
 
 };
 
-PLUGINLIB_EXPORT_CLASS(dataset_toolkit::h264_bag_tools, nodelet::Nodelet);
+PLUGINLIB_EXPORT_CLASS(dataset_toolkit::H264BagPlayback, nodelet::Nodelet);
 }
