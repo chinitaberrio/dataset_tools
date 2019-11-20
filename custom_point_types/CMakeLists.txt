@@ -17,6 +17,7 @@ add_definitions(${PCL_DEFINITIONS})
 
 catkin_package(
   CATKIN_DEPENDS pcl_ros
+  INCLUDE_DIRS include
 )
 
 include_directories(
