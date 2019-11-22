@@ -91,7 +91,7 @@ public:
   RunPipeline();
   ~RunPipeline();
 
-  bool WaitForMessages();
+  bool WaitForMessages(float time_out = 1.);
   void ResetMessageFlags();
 
 protected:

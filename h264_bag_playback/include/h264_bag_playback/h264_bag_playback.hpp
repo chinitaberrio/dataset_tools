@@ -1,7 +1,7 @@
 #include <iostream>
 
-#include <pluginlib/class_list_macros.h>
-#include <nodelet/nodelet.h>
+//#include <pluginlib/class_list_macros.h>
+//#include <nodelet/nodelet.h>
 #include <ros/ros.h>
 
 #include <sensor_msgs/Imu.h>
@@ -18,16 +18,22 @@
 namespace dataset_toolkit
 {
 
-class H264BagPlayback : public nodelet::Nodelet
+class h264_bag_playback //: public nodelet::Nodelet
 {
 public:
-  H264BagPlayback();
+  h264_bag_playback();
 
   void bypass_init() {
     this->onInit();
   }
 
-private:
+  ros::Timer timer;
+
+  void timerCallback(const ros::TimerEvent& event);
+
+  void ReadFromBag();
+
+protected:
 
   virtual void onInit();
 
@@ -50,18 +56,18 @@ private:
                                                       {"B1", "gmsl_right_side_link"}};
 
 
+  virtual void MessagePublisher(ros::Publisher &publisher, const rosbag::MessageInstance &message);
+  virtual void ImagePublisher(image_transport::Publisher &publisher, sensor_msgs::ImagePtr &message);
+
   ros::NodeHandle private_nh;
   ros::NodeHandle public_nh;
+
   image_transport::ImageTransport image_transport;
 
   bool save_time_diff = true;
   ros::Duration dur;
 
-
-
-
-
 };
 
-PLUGINLIB_EXPORT_CLASS(dataset_toolkit::H264BagPlayback, nodelet::Nodelet);
+//PLUGINLIB_EXPORT_CLASS(dataset_toolkit::h264_bag_playback, nodelet::Nodelet);
 }

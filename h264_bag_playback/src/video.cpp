@@ -66,7 +66,7 @@ bool Video::InitialiseVideo(std::string camera_name, std::string video_filename)
   corrected_publisher = image_transport.advertise(corrected_topic_name, 1);
 
   if(!video_device.isOpened()) { // check if we succeeded
-    //NODELET_INFO_STREAM("could not open video file: " << file_name << " called " << camera_name);
+    //ROS_INFO_STREAM("could not open video file: " << file_name << " called " << camera_name);
     return false;
   }
 

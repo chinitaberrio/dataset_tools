@@ -31,8 +31,9 @@ RunPipeline::~RunPipeline() {
 
 
 bool
-RunPipeline::WaitForMessages() {
+RunPipeline::WaitForMessages(float time_out) {
 
+  ros::Time start_time = ros::Time::now();
   bool messages_received = false;
   do {
 
@@ -45,6 +46,9 @@ RunPipeline::WaitForMessages() {
       }
     }
 
+    if ((ros::Time::now() - start_time).toSec() > time_out) {
+      break;
+    }
 
   } while (!messages_received && ros::ok());
 

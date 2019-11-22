@@ -26,12 +26,14 @@
 //  the rosbag library has a conflict with the compression functions
 //  of the opencv library causing a run time seg fault.
 int main(int argc, char **argv) {
+
   //Initialize Node and handles
   ros::init(argc, argv, "h264_bag_playback_node");
   ros::NodeHandle n;
 
-  dataset_toolkit::H264BagPlayback bag_tools;
-  bag_tools.bypass_init();
+  dataset_toolkit::h264_bag_playback bag_tools;
+  //bag_tools.bypass_init();
+  bag_tools.ReadFromBag();
 
   return 0;
 }
@@ -41,11 +43,20 @@ namespace dataset_toolkit
 {
 
 
-H264BagPlayback::H264BagPlayback() : private_nh("~"), image_transport(public_nh) {
+h264_bag_playback::h264_bag_playback() : private_nh("~"), image_transport(public_nh) {
 }
 
 
-void H264BagPlayback::onInit() {
+void h264_bag_playback::onInit() {
+  timer = public_nh.createTimer(ros::Duration(0.1), &h264_bag_playback::timerCallback, this);
+}
+
+
+void h264_bag_playback::timerCallback(const ros::TimerEvent& event) {
+  ReadFromBag();
+}
+
+void h264_bag_playback::ReadFromBag() {
 
   int scaled_width;
   private_nh.param("output_width", scaled_width, 0);
@@ -57,21 +68,21 @@ void H264BagPlayback::onInit() {
   private_nh.param("limit_playback_speed", limit_playback_speed, true);
 
   if (scaled_height && scaled_width) {
-    NODELET_INFO_STREAM("output images will be scaled to " << scaled_width << "x" << scaled_height);
+    ROS_INFO_STREAM("output images will be scaled to " << scaled_width << "x" << scaled_height);
   }
   else {
-    NODELET_INFO_STREAM("output images will NOT be scaled");
+    ROS_INFO_STREAM("output images will NOT be scaled");
   }
   std::string bag_file_name = "";
   private_nh.getParam("bag_file", bag_file_name);
 
   if (bag_file_name.empty()) {
-    NODELET_INFO_STREAM("Could not find bagfile " << bag_file_name);
+    ROS_INFO_STREAM("Could not find bagfile " << bag_file_name);
     return;
   }
 
   std::string file_prefix = remove_last_of_string(bag_file_name, ".");
-  NODELET_INFO_STREAM("Reading from bag: " << bag_file_name << " with prefix " << file_prefix);
+  ROS_INFO_STREAM("Reading from bag: " << bag_file_name << " with prefix " << file_prefix);
 
   std::vector<std::string> file_list;
   get_files_pattern(file_prefix + "*.h264", file_list);
@@ -83,23 +94,23 @@ void H264BagPlayback::onInit() {
     Video new_video;
     videos[camera_name] = new_video;
     if (videos[camera_name].InitialiseVideo(camera_name, file_name)){
-      NODELET_INFO_STREAM("including video file: " << file_name << " for camera " << camera_name);
+      ROS_INFO_STREAM("including video file: " << file_name << " for camera " << camera_name);
     }
     else {
-      NODELET_INFO_STREAM("FAIL to open video file: " << file_name << " for camera " << camera_name);
+      ROS_INFO_STREAM("FAIL to open video file: " << file_name << " for camera " << camera_name);
       return;
     }
   }
 
-  NODELET_INFO_STREAM("trying to OPEN bagfile " << bag_file_name);
+  ROS_INFO_STREAM("trying to OPEN bagfile " << bag_file_name);
 
   rosbag::Bag bag;
   bag.open(bag_file_name);
 
-  /*if (!bag.isOpen()) {
-    NODELET_INFO_STREAM("Could not OPEN bagfile " << bag_file_name);
+  if (!bag.isOpen()) {
+    ROS_INFO_STREAM("Could not OPEN bagfile " << bag_file_name);
     return;
-  }*/
+  }
 
   rosbag::View view(bag);
   AdvertiseTopics(view);
@@ -151,6 +162,8 @@ void H264BagPlayback::onInit() {
           videos[camera_name].InitialiseCameraInfo(scaled_info_msg);
         }
 
+        //MessagePublisher(pub_iter->second, scaled_info_msg);
+        // todo: make this go through the MessagePublisher structure
         pub_iter->second.publish(scaled_info_msg);
       }
     }
@@ -205,14 +218,14 @@ void H264BagPlayback::onInit() {
               while (ros::ok() && current_video.frame_counter < s->frame_counter) {
                 current_video.video_device >> new_frame;
                 current_video.frame_counter++;
-                NODELET_INFO_STREAM_THROTTLE(0.5, "throwing away frame for camera " << camera_name);
+                ROS_INFO_STREAM_THROTTLE(0.5, "throwing away frame for camera " << camera_name);
               }
             }
             // todo: this doesn't seem to work for h.264 probably due to the way it is encoded
             // this is worth revisiting
             // https://stackoverflow.com/questions/2974625/opencv-seek-function-rewind
             else {
-              NODELET_INFO_STREAM("tracking camera to frame " << camera_name);
+              ROS_INFO_STREAM("tracking camera to frame " << camera_name);
               current_video.frame_counter = s->frame_counter;
             }
           }
@@ -250,7 +263,7 @@ void H264BagPlayback::onInit() {
                   cv::remap(new_frame, output_image, current_video.map1, current_video.map2, cv::INTER_LINEAR, cv::BORDER_CONSTANT);
                 }
                 else {
-                  NODELET_INFO_STREAM("Unknown distortion model, skipping " << current_video.camera_info_msg.distortion_model);
+                  ROS_INFO_STREAM("Unknown distortion model, skipping " << current_video.camera_info_msg.distortion_model);
                   continue;
                 }
 
@@ -269,7 +282,9 @@ void H264BagPlayback::onInit() {
                 cv_ptr->header.stamp = camera_stamp;
                 cv_ptr->header.frame_id = frame_id_dict[camera_name];
 
-                current_video.uncorrected_publisher.publish(cv_ptr->toImageMsg());
+                //current_video.uncorrected_publisher.publish(cv_ptr->toImageMsg());
+                auto image_message = cv_ptr->toImageMsg();
+                ImagePublisher(current_video.uncorrected_publisher, image_message);
               }
             }
           }
@@ -277,11 +292,13 @@ void H264BagPlayback::onInit() {
       }
 
       // repubish the frame info message
-      pub_iter->second.publish(m);
+      //pub_iter->second.publish(m);
+      MessagePublisher(pub_iter->second, m);
     }
     else {
       // publish the remaining messages
-      pub_iter->second.publish(m);
+      //pub_iter->second.publish(m);
+      MessagePublisher(pub_iter->second, m);
     }
 
     // Spin once so that any other ros controls/pub/sub can be actioned
@@ -291,13 +308,28 @@ void H264BagPlayback::onInit() {
       break;
   }
 
-  NODELET_INFO_STREAM("completed playback");
+  ROS_INFO_STREAM("completed playback");
   bag.close();
 }
 
 
+
 void
-H264BagPlayback::AdvertiseTopics(rosbag::View &view) {
+h264_bag_playback::MessagePublisher(ros::Publisher &publisher, const rosbag::MessageInstance &message) {
+  publisher.publish(message);
+}
+
+
+void
+h264_bag_playback::ImagePublisher(image_transport::Publisher &publisher, sensor_msgs::ImagePtr &message) {
+  publisher.publish(message);
+}
+
+
+
+
+void
+h264_bag_playback::AdvertiseTopics(rosbag::View &view) {
 
   // Create a publisher and advertise for all of our message types
   for(const rosbag::ConnectionInfo* c: view.getConnections())
@@ -314,7 +346,7 @@ H264BagPlayback::AdvertiseTopics(rosbag::View &view) {
 
       // latch the topic tf_static
       if (c->topic == "/tf_static") {
-        NODELET_INFO_STREAM("latching topic " << c->topic);
+        ROS_INFO_STREAM("latching topic " << c->topic);
         opts.latch = true;
       }
 
