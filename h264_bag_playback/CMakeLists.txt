@@ -3,9 +3,11 @@ project(h264_bag_playback)
 
 find_package(catkin REQUIRED COMPONENTS nodelet
 	rosbag
-	rosbag_storage
+	#rosbag_storage
 	gmsl_frame_msg
 	roscpp
+	tf2_ros
+	tf2_sensor_msgs
 	image_transport
 	std_msgs
 	cv_bridge
@@ -29,6 +31,8 @@ catkin_package(
 	gmsl_frame_msg
 	image_transport
 	std_msgs
+	tf2_ros
+	tf2_sensor_msgs
 	nav_msgs
 	sensor_msgs
 	cv_bridge

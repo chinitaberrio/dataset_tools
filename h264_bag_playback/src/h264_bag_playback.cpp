@@ -43,7 +43,8 @@ namespace dataset_toolkit
 {
 
 
-h264_bag_playback::h264_bag_playback() : private_nh("~"), image_transport(public_nh) {
+h264_bag_playback::h264_bag_playback() : tf_buffer(std::make_shared<tf2::BufferCore>()), private_nh("~"), image_transport(public_nh) {
+  //tf_buffer = std::make_shared<tf2::BufferCore>();
 }
 
 
@@ -130,41 +131,56 @@ void h264_bag_playback::ReadFromBag() {
 
     ROS_ASSERT(pub_iter != publishers.end());
 
+    const auto tf = m.instantiate<tf2_msgs::TFMessage>();
+    if (tf) {
+      for (const auto &transform: tf->transforms) {
+        if (m.getTopic() == "/tf_static") {
+          tf_buffer->setTransform(transform, "zio", true);
+        }
+        else {
+          tf_buffer->setTransform(transform, "zio", false);
+        }
+      }
+    }
+
     // For each camera info msg, check whether we have stored the calibration parameters for this camera
     if (keep_last_of_string(topic, "/") == "camera_info") {
       std::string camera_name = keep_last_of_string(remove_last_of_string(topic, "/"), "/");
 
       sensor_msgs::CameraInfo::ConstPtr s = m.instantiate<sensor_msgs::CameraInfo>();
       if (s != NULL) {
-        sensor_msgs::CameraInfo scaled_info_msg = *s;
+        sensor_msgs::CameraInfo::Ptr scaled_info_msg(new sensor_msgs::CameraInfo());
+        *scaled_info_msg = *s;
 
 
         if (scaled_height && scaled_width) {
           double scale_y = static_cast<double>(scaled_height) / s->height;
           double scale_x = static_cast<double>(scaled_width) / s->width;
 
-          scaled_info_msg.height = scaled_height;
-          scaled_info_msg.width = scaled_width;
+          scaled_info_msg->height = scaled_height;
+          scaled_info_msg->width = scaled_width;
 
-          scaled_info_msg.K[0] = scaled_info_msg.K[0] * scale_x;  // fx
-          scaled_info_msg.K[2] = scaled_info_msg.K[2] * scale_x;  // cx
-          scaled_info_msg.K[4] = scaled_info_msg.K[4] * scale_y;  // fy
-          scaled_info_msg.K[5] = scaled_info_msg.K[5] * scale_y;  // cy
+          scaled_info_msg->K[0] = scaled_info_msg->K[0] * scale_x;  // fx
+          scaled_info_msg->K[2] = scaled_info_msg->K[2] * scale_x;  // cx
+          scaled_info_msg->K[4] = scaled_info_msg->K[4] * scale_y;  // fy
+          scaled_info_msg->K[5] = scaled_info_msg->K[5] * scale_y;  // cy
 
-          scaled_info_msg.P[0] = scaled_info_msg.P[0] * scale_x;  // fx
-          scaled_info_msg.P[2] = scaled_info_msg.P[2] * scale_x;  // cx
-          scaled_info_msg.P[3] = scaled_info_msg.P[3] * scale_x;  // T
-          scaled_info_msg.P[5] = scaled_info_msg.P[5] * scale_y;  // fy
-          scaled_info_msg.P[6] = scaled_info_msg.P[6] * scale_y;  // cy
+          scaled_info_msg->P[0] = scaled_info_msg->P[0] * scale_x;  // fx
+          scaled_info_msg->P[2] = scaled_info_msg->P[2] * scale_x;  // cx
+          scaled_info_msg->P[3] = scaled_info_msg->P[3] * scale_x;  // T
+          scaled_info_msg->P[5] = scaled_info_msg->P[5] * scale_y;  // fy
+          scaled_info_msg->P[6] = scaled_info_msg->P[6] * scale_y;  // cy
         }
 
         if (!videos[camera_name].valid_camera_info) {
-          videos[camera_name].InitialiseCameraInfo(scaled_info_msg);
+          videos[camera_name].InitialiseCameraInfo(*scaled_info_msg);
         }
 
         //MessagePublisher(pub_iter->second, scaled_info_msg);
         // todo: make this go through the MessagePublisher structure
-        pub_iter->second.publish(scaled_info_msg);
+        //pub_iter->second.publish(scaled_info_msg);
+        CameraInfoPublisher(pub_iter->second, scaled_info_msg);
+        ros::spinOnce();
       }
     }
 
@@ -271,8 +287,12 @@ void h264_bag_playback::ReadFromBag() {
                 cv_ptr->encoding = "bgr8";
                 cv_ptr->header.stamp = camera_stamp;
                 cv_ptr->header.frame_id = frame_id_dict[camera_name];
+                cv_ptr->header.seq = s->global_counter;
 
-                current_video.corrected_publisher.publish(cv_ptr->toImageMsg());
+                auto image_message = cv_ptr->toImageMsg();
+                ImagePublisher(current_video.corrected_publisher, image_message);
+                ros::spinOnce();
+                //current_video.corrected_publisher.publish(cv_ptr->toImageMsg());
               }
 
               // Check if someone wants the uncorrected camera images
@@ -281,10 +301,12 @@ void h264_bag_playback::ReadFromBag() {
                 cv_ptr->encoding = "bgr8";
                 cv_ptr->header.stamp = camera_stamp;
                 cv_ptr->header.frame_id = frame_id_dict[camera_name];
+                cv_ptr->header.seq = s->global_counter;
 
                 //current_video.uncorrected_publisher.publish(cv_ptr->toImageMsg());
                 auto image_message = cv_ptr->toImageMsg();
                 ImagePublisher(current_video.uncorrected_publisher, image_message);
+                ros::spinOnce();
               }
             }
           }
@@ -294,11 +316,13 @@ void h264_bag_playback::ReadFromBag() {
       // repubish the frame info message
       //pub_iter->second.publish(m);
       MessagePublisher(pub_iter->second, m);
+      ros::spinOnce();
     }
     else {
       // publish the remaining messages
       //pub_iter->second.publish(m);
       MessagePublisher(pub_iter->second, m);
+      ros::spinOnce();
     }
 
     // Spin once so that any other ros controls/pub/sub can be actioned
@@ -315,13 +339,20 @@ void h264_bag_playback::ReadFromBag() {
 
 
 void
+h264_bag_playback::CameraInfoPublisher(ros::Publisher &publisher, const sensor_msgs::CameraInfoConstPtr &message) {
+  publisher.publish(message);
+}
+
+
+void
 h264_bag_playback::MessagePublisher(ros::Publisher &publisher, const rosbag::MessageInstance &message) {
   publisher.publish(message);
 }
 
 
 void
-h264_bag_playback::ImagePublisher(image_transport::Publisher &publisher, sensor_msgs::ImagePtr &message) {
+h264_bag_playback::ImagePublisher(image_transport::Publisher &publisher, const sensor_msgs::ImageConstPtr &message) {
+
   publisher.publish(message);
 }
 
@@ -358,5 +389,6 @@ h264_bag_playback::AdvertiseTopics(rosbag::View &view) {
   }
 }
 
+  PLUGINLIB_EXPORT_CLASS(dataset_toolkit::h264_bag_playback, nodelet::Nodelet);
 
 }

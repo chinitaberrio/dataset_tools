@@ -1,7 +1,8 @@
 #include <iostream>
 
-//#include <pluginlib/class_list_macros.h>
-//#include <nodelet/nodelet.h>
+#include <pluginlib/class_list_macros.h>
+#include <nodelet/nodelet.h>
+
 #include <ros/ros.h>
 
 #include <sensor_msgs/Imu.h>
@@ -12,13 +13,19 @@
 
 #include <rosbag/view.h>
 
+#include <tf2_msgs/TFMessage.h>
+//#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+//#include <tf2_sensor_msgs/tf2_sensor_msgs.h>
+#include <tf2/buffer_core.h>
+
+
 #include "video.hpp"
 
 
 namespace dataset_toolkit
 {
 
-class h264_bag_playback //: public nodelet::Nodelet
+class h264_bag_playback : public nodelet::Nodelet
 {
 public:
   h264_bag_playback();
@@ -57,10 +64,13 @@ protected:
 
 
   virtual void MessagePublisher(ros::Publisher &publisher, const rosbag::MessageInstance &message);
-  virtual void ImagePublisher(image_transport::Publisher &publisher, sensor_msgs::ImagePtr &message);
+  virtual void ImagePublisher(image_transport::Publisher &publisher, const sensor_msgs::ImageConstPtr &message);
+  virtual void CameraInfoPublisher(ros::Publisher &publisher, const sensor_msgs::CameraInfoConstPtr &message);
 
   ros::NodeHandle private_nh;
   ros::NodeHandle public_nh;
+
+  std::shared_ptr<tf2::BufferCore> tf_buffer;
 
   image_transport::ImageTransport image_transport;
 
@@ -69,5 +79,4 @@ protected:
 
 };
 
-//PLUGINLIB_EXPORT_CLASS(dataset_toolkit::h264_bag_playback, nodelet::Nodelet);
 }
