@@ -17,6 +17,7 @@
   <depend>gmsl_frame_msg</depend>
   <depend>std_msgs</depend>
   <depend>nav_msgs</depend>
+  <depend>image_transport</depend>
   <depend>sensor_msgs</depend>
   <depend>custom_point_types</depend>
 

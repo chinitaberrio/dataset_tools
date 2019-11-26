@@ -214,11 +214,14 @@ void h264_bag_playback::ReadFromBag() {
         temp_stamp = ros::Time((s->camera_timestamp) / 1000000, ((s->camera_timestamp) % 1000000) * 1000);
          
         if (fabs(dur.toSec()) > 0.5) {
-          camera_stamp = temp_stamp + dur;
+          camera_stamp = s->header.stamp;//temp_stamp + dur;
         }
         else {
           camera_stamp = temp_stamp;
         }
+
+        //std::cout << "camera stamp " << camera_stamp.toNSec() << std::endl;
+
          
         // Check that someone has subscribed to this camera's images
         if (!(videos[camera_name].corrected_publisher.getNumSubscribers() == 0 &&
@@ -352,7 +355,6 @@ h264_bag_playback::MessagePublisher(ros::Publisher &publisher, const rosbag::Mes
 
 void
 h264_bag_playback::ImagePublisher(image_transport::Publisher &publisher, const sensor_msgs::ImageConstPtr &message) {
-
   publisher.publish(message);
 }
 

@@ -13,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   nav_msgs
   sensor_msgs
   rosbag
+  image_transport
   tf2
   tf2_geometry_msgs
   gmsl_frame_msg
