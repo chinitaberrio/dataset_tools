@@ -7,8 +7,8 @@
 
 #include "run_pipeline.hpp"
 
-#include "point_xyzir.h"
-#include "point_xyzirc.h"
+#include <custom_point_types/point_xyzir.h>
+#include <custom_point_types/point_xyzirc.h>
 
 class ICPMatcherPipeline : public RunPipeline {
 
