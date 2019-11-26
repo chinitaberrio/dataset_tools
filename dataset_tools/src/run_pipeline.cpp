@@ -10,24 +10,18 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf2_sensor_msgs/tf2_sensor_msgs.h>
 
-
 #include <pcl_ros/point_cloud.h>
 #include <pcl_ros/transforms.h>
 #include <pcl_conversions/pcl_conversions.h>
 
-#include "point_xyzir.h"
-#include "point_xyzirc.h"
 
 
 RunPipeline::RunPipeline() {
-
 }
+
 
 RunPipeline::~RunPipeline() {
 }
-
-
-
 
 
 bool
@@ -63,18 +57,3 @@ RunPipeline::ResetMessageFlags() {
     pipe_out->message_received_ = false;
   }
 }
-
-
-/*
-bool
-RunPipeline::PublishLatestTransform(std::string parent_frame, std::string child_frame) {
-
-  // find the transform from the buffer
-
-  // publish the transform
-
-
-  return true;
-}
-*/
-
