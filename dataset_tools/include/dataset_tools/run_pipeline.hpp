@@ -19,7 +19,7 @@ public:
   PipelineInput() {}
   ~PipelineInput() {}
 
-  typedef boost::shared_ptr<MessageType> MessageTypePtr;
+  typedef boost::shared_ptr<const MessageType> MessageTypePtr;
 
 
   void Initialise(std::string topic) {
