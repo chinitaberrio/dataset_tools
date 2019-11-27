@@ -229,7 +229,7 @@ void h264_bag_playback::ReadFromBag() {
         }
 
         temp_stamp = ros::Time((s->camera_timestamp) / 1000000, ((s->camera_timestamp) % 1000000) * 1000);
-         
+
         if (fabs(dur.toSec()) > 0.5) {
           camera_stamp = temp_stamp + dur - time_offset;
         }
