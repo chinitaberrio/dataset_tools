@@ -83,7 +83,24 @@ void h264_bag_playback::ReadFromBag() {
   }
 
   std::string file_prefix = remove_last_of_string(bag_file_name, ".");
-  ROS_INFO_STREAM("Reading from bag: " << bag_file_name << " with prefix " << file_prefix);
+  std::string dataset_name = keep_last_of_string(file_prefix, "/");
+  ROS_INFO_STREAM("Reading from bag: " << bag_file_name << " dataset name " << dataset_name);
+
+  std::map<std::string, float> dataset_time_correction;
+  private_nh.getParam("dataset_time_correction", dataset_time_correction);
+
+  ROS_INFO_STREAM("Read " << dataset_time_correction.size() << " time correction parameters");
+
+  ros::Duration time_offset(0.0);
+  if (dataset_time_correction.count(dataset_name)) {
+    float time_offset_float = dataset_time_correction.at(dataset_name);
+    time_offset = ros::Duration(time_offset_float);
+    ROS_INFO_STREAM("Time correction of " << time_offset.toSec() << " is being applied");
+  }
+  else {
+    ROS_INFO_STREAM("No time correction parameters available for this dataset");
+  }
+
 
   std::vector<std::string> file_list;
   get_files_pattern(file_prefix + "*.h264", file_list);
@@ -214,7 +231,7 @@ void h264_bag_playback::ReadFromBag() {
         temp_stamp = ros::Time((s->camera_timestamp) / 1000000, ((s->camera_timestamp) % 1000000) * 1000);
          
         if (fabs(dur.toSec()) > 0.5) {
-          camera_stamp = s->header.stamp;//temp_stamp + dur;
+          camera_stamp = temp_stamp + dur - time_offset;
         }
         else {
           camera_stamp = temp_stamp;
