@@ -234,7 +234,7 @@ void h264_bag_playback::ReadFromBag() {
           camera_stamp = temp_stamp + dur - time_offset;
         }
         else {
-          camera_stamp = temp_stamp;
+          camera_stamp = temp_stamp - time_offset;
         }
 
         //std::cout << "camera stamp " << camera_stamp.toNSec() << std::endl;
