@@ -1,5 +1,5 @@
-#ifndef POINTXYZIR_CLASS
-#define POINTXYZIR_CLASS
+#ifndef POINTXYZIRRGB_CLASS
+#define POINTXYZIRRGB_CLASS
 
 #define PCL_NO_PRECOMPILE
 
@@ -8,21 +8,29 @@
 // Algorithms we want this type to work with
 #include <pcl/kdtree/impl/kdtree_flann.hpp>
 
-namespace pcl
-{
-struct PointXYZIR
-{
-  PCL_ADD_POINT4D                  // Macro quad-word XYZ
-      float intensity;             // Laser intensity
-  uint16_t ring;                   // Laser ring number
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW  // Ensure proper alignment
-} EIGEN_ALIGN16;
+namespace pcl {
+
+  struct PointXYZIRRGB {
+    PCL_ADD_POINT4D;
+    float intensity;
+    std::uint16_t ring;
+    float rgb;
+
+
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  } EIGEN_ALIGN16;
 
 }  // end namespace pcl
 
-POINT_CLOUD_REGISTER_POINT_STRUCT(PointXYZIR, (float, x, x)(float, y, y)(float, z, z)(float, intensity,
-                                                                                      intensity)(uint16_t, ring, ring))
 
-typedef pcl::PointCloud<pcl::PointXYZIR> PointCloudXYZIR;
+POINT_CLOUD_REGISTER_POINT_STRUCT (PointXYZIRRGB,
+      (float, x, x)
+      (float, y, y)
+      (float, z, z)
+      (float, intensity, intensity)
+      (std::uint16_t, ring, ring)
+      (float, rgb, rgb))
+
+typedef pcl::PointCloud<pcl::PointXYZIRRGB> PointCloudXYZIRRGB;
 
 #endif

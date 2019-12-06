@@ -1,5 +1,5 @@
-#ifndef POINTXYZIR_CLASS
-#define POINTXYZIR_CLASS
+#ifndef POINTXYZIRUV_CLASS
+#define POINTXYZIRUV_CLASS
 
 #define PCL_NO_PRECOMPILE
 
@@ -10,19 +10,30 @@
 
 namespace pcl
 {
-struct PointXYZIR
-{
-  PCL_ADD_POINT4D                  // Macro quad-word XYZ
-      float intensity;             // Laser intensity
-  uint16_t ring;                   // Laser ring number
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW  // Ensure proper alignment
-} EIGEN_ALIGN16;
+
+  struct PointXYZIRUV {
+    PCL_ADD_POINT4D;
+    float intensity;
+    std::uint16_t ring;
+    float U;
+    float V;
+
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  } EIGEN_ALIGN16;
 
 }  // end namespace pcl
 
-POINT_CLOUD_REGISTER_POINT_STRUCT(PointXYZIR, (float, x, x)(float, y, y)(float, z, z)(float, intensity,
-                                                                                      intensity)(uint16_t, ring, ring))
 
-typedef pcl::PointCloud<pcl::PointXYZIR> PointCloudXYZIR;
+POINT_CLOUD_REGISTER_POINT_STRUCT (PointXYZIRUV,
+      (float, x, x)
+      (float, y, y)
+      (float, z, z)
+      (float, intensity, intensity)
+      (std::uint16_t, ring, ring)
+      (float, U, U)
+      (float, V, V))
+
+
+typedef pcl::PointCloud<pcl::PointXYZIRUV> PointCloudXYZIRUV;
 
 #endif
