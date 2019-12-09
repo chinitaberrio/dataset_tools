@@ -86,14 +86,14 @@ void h264_bag_playback::ReadFromBag() {
   std::string dataset_name = keep_last_of_string(file_prefix, "/");
   ROS_INFO_STREAM("Reading from bag: " << bag_file_name << " dataset name " << dataset_name);
 
-  std::map<std::string, float> dataset_time_correction;
+  std::map<std::string, double> dataset_time_correction;
   private_nh.getParam("dataset_time_correction", dataset_time_correction);
 
   ROS_INFO_STREAM("Read " << dataset_time_correction.size() << " time correction parameters");
 
   ros::Duration time_offset(0.0);
   if (dataset_time_correction.count(dataset_name)) {
-    float time_offset_float = dataset_time_correction.at(dataset_name);
+    double time_offset_float = dataset_time_correction.at(dataset_name);
     time_offset = ros::Duration(time_offset_float);
     ROS_INFO_STREAM("Time correction of " << time_offset.toSec() << " is being applied");
   }
