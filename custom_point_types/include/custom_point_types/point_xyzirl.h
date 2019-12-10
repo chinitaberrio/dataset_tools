@@ -10,7 +10,7 @@
 
 namespace pcl {
 
-  struct POINTXYZIRL {
+  struct PointXYZIRL {
     PCL_ADD_POINT4D                  // Macro quad-word XYZ
     float intensity;                 // Laser intensity
     uint16_t ring;                   // Laser ring number
@@ -20,7 +20,7 @@ namespace pcl {
 
 }  // end namespace pcl
 
-POINT_CLOUD_REGISTER_POINT_STRUCT(POINTXYZIRL,
+POINT_CLOUD_REGISTER_POINT_STRUCT(PointXYZIRL,
     (float, x, x)
     (float, y, y)
     (float, z, z)
@@ -28,6 +28,6 @@ POINT_CLOUD_REGISTER_POINT_STRUCT(POINTXYZIRL,
     (uint16_t, ring, ring)
     (uint16_t, label, label))
 
-typedef pcl::PointCloud<pcl::POINTXYZIRL> PointCloudXYZIRL;
+typedef pcl::PointCloud<pcl::PointXYZIRL> PointCloudXYZIRL;
 
 #endif
