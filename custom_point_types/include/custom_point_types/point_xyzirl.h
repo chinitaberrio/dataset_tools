@@ -25,7 +25,7 @@ POINT_CLOUD_REGISTER_POINT_STRUCT(POINTXYZIRL,
     (float, y, y)
     (float, z, z)
     (float, intensity, intensity)
-    (uint16_t, ring, ring))
+    (uint16_t, ring, ring)
     (uint16_t, label, label))
 
 typedef pcl::PointCloud<pcl::POINTXYZIRL> PointCloudXYZIRL;
