@@ -40,6 +40,8 @@ public:
 
   void ReadFromBag();
 
+  std::shared_ptr<tf2::BufferCore> tf_buffer;
+
 protected:
 
   virtual void onInit();
@@ -69,8 +71,6 @@ protected:
 
   ros::NodeHandle private_nh;
   ros::NodeHandle public_nh;
-
-  std::shared_ptr<tf2::BufferCore> tf_buffer;
 
   image_transport::ImageTransport image_transport;
 

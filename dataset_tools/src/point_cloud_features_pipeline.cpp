@@ -28,8 +28,8 @@ PointCloudFeaturesPipeline::receive_message(const sensor_msgs::PointCloud2::Cons
   input_pointcloud.PublishMessage(input_pointcloud_pcl);
 
   if (WaitForMessages()) {
-    ROS_INFO_STREAM("received response " << output_poles.last_message->points.size() << ", "
-                                         << output_corners.last_message->points.size());
+    //ROS_INFO_STREAM("received response " << output_poles.last_message->points.size() << ", "
+    //                                     << output_corners.last_message->points.size());
 
     if (publish_poles_corners) {
       publish_poles_corners(output_poles.last_message, output_corners.last_message);
