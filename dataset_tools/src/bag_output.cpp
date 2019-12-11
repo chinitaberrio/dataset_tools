@@ -39,6 +39,12 @@ void BagOutput::publish_fix(sensor_msgs::NavSatFix &msg, std::string topic_name)
 }
 
 
+void BagOutput::publish_tf(tf2_msgs::TFMessage &msg, std::string topic_name) {
+  if (bag->isOpen() && msg.transforms.size() > 0)
+    bag->write(topic_name, msg.transforms[0].header.stamp, msg);
+}
+
+
 
 void BagOutput::Initialise(std::string bag_file) {
   bag->open(bag_file, rosbag::bagmode::Write);
