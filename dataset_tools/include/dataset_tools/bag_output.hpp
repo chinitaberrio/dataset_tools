@@ -4,7 +4,8 @@
 // include messages to write to bag file
 #include <nav_msgs/Odometry.h>
 #include <sensor_msgs/NavSatFix.h>
-#include <tf2_msgs/TFMessage.h>
+
+#include <tf/transform_datatypes.h>
 
 
 namespace rosbag {
@@ -25,7 +26,7 @@ public:
 
   void publish_odom(nav_msgs::Odometry &msg, std::string topic_name);
   void publish_fix(sensor_msgs::NavSatFix &msg, std::string topic_name);
-  void publish_tf(tf2_msgs::TFMessage &msg, std::string topic_name);
+  void publish_tf(tf::StampedTransform &msg, std::string topic_name);
 
   std::shared_ptr<rosbag::Bag> bag;
 };

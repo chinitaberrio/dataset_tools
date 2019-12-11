@@ -57,16 +57,40 @@ void h264_bag_playback::timerCallback(const ros::TimerEvent& event) {
   ReadFromBag();
 }
 
+
+void
+h264_bag_playback::ScaleCameraInfoMsg(int original_width,
+                                      int scaled_width,
+                                      int original_height,
+                                      int scaled_height,
+                                      sensor_msgs::CameraInfo::Ptr &scaled_info_msg) {
+
+  double scale_y = static_cast<double>(scaled_height) / original_height;
+  double scale_x = static_cast<double>(scaled_width) / original_width;
+
+  scaled_info_msg->height = scaled_height;
+  scaled_info_msg->width = scaled_width;
+
+  scaled_info_msg->K[0] = scaled_info_msg->K[0] * scale_x;  // fx
+  scaled_info_msg->K[2] = scaled_info_msg->K[2] * scale_x;  // cx
+  scaled_info_msg->K[4] = scaled_info_msg->K[4] * scale_y;  // fy
+  scaled_info_msg->K[5] = scaled_info_msg->K[5] * scale_y;  // cy
+
+  scaled_info_msg->P[0] = scaled_info_msg->P[0] * scale_x;  // fx
+  scaled_info_msg->P[2] = scaled_info_msg->P[2] * scale_x;  // cx
+  scaled_info_msg->P[3] = scaled_info_msg->P[3] * scale_x;  // T
+  scaled_info_msg->P[5] = scaled_info_msg->P[5] * scale_y;  // fy
+  scaled_info_msg->P[6] = scaled_info_msg->P[6] * scale_y;  // cy
+}
+
+
+
 void h264_bag_playback::ReadFromBag() {
 
-  int scaled_width;
+  // parameter to scale the size of the images from the h264 playback
+  int scaled_width = 0, scaled_height = 0;
   private_nh.param("output_width", scaled_width, 0);
-
-  int scaled_height;
   private_nh.param("output_height", scaled_height, 0);
-
-  bool limit_playback_speed;
-  private_nh.param("limit_playback_speed", limit_playback_speed, true);
 
   if (scaled_height && scaled_width) {
     ROS_INFO_STREAM("output images will be scaled to " << scaled_width << "x" << scaled_height);
@@ -74,6 +98,12 @@ void h264_bag_playback::ReadFromBag() {
   else {
     ROS_INFO_STREAM("output images will NOT be scaled");
   }
+
+  // parameter to limit the speed of playback to realtime
+  bool limit_playback_speed;
+  private_nh.param("limit_playback_speed", limit_playback_speed, true);
+
+  // determine the bag file to playback
   std::string bag_file_name = "";
   private_nh.getParam("bag_file", bag_file_name);
 
@@ -82,25 +112,10 @@ void h264_bag_playback::ReadFromBag() {
     return;
   }
 
+  // determine the file prefixes and initialise each camera
   std::string file_prefix = remove_last_of_string(bag_file_name, ".");
   std::string dataset_name = keep_last_of_string(file_prefix, "/");
   ROS_INFO_STREAM("Reading from bag: " << bag_file_name << " dataset name " << dataset_name);
-
-  std::map<std::string, double> dataset_time_correction;
-  private_nh.getParam("dataset_time_correction", dataset_time_correction);
-
-  ROS_INFO_STREAM("Read " << dataset_time_correction.size() << " time correction parameters");
-
-  ros::Duration time_offset(0.0);
-  if (dataset_time_correction.count(dataset_name)) {
-    double time_offset_float = dataset_time_correction.at(dataset_name);
-    time_offset = ros::Duration(time_offset_float);
-    ROS_INFO_STREAM("Time correction of " << time_offset.toSec() << " is being applied");
-  }
-  else {
-    ROS_INFO_STREAM("No time correction parameters available for this dataset");
-  }
-
 
   std::vector<std::string> file_list;
   get_files_pattern(file_prefix + "*.h264", file_list);
@@ -120,8 +135,7 @@ void h264_bag_playback::ReadFromBag() {
     }
   }
 
-  ROS_INFO_STREAM("trying to OPEN bagfile " << bag_file_name);
-
+  // Attempt to open the bag file
   rosbag::Bag bag;
   bag.open(bag_file_name);
 
@@ -130,24 +144,39 @@ void h264_bag_playback::ReadFromBag() {
     return;
   }
 
+  // determine whether to apply a time bias correction
+  // (some datasets have an offset between the nvidia computer time and the ROS time)
+  std::map<std::string, double> dataset_time_correction;
+  private_nh.getParam("dataset_time_correction", dataset_time_correction);
+
+  ros::Duration time_offset(0.0);
+  if (dataset_time_correction.count(dataset_name)) {
+    time_offset = ros::Duration(dataset_time_correction.at(dataset_name));
+    ROS_INFO_STREAM("Time correction of " << time_offset.toSec() << " is being applied");
+  }
+  else {
+    ROS_INFO_STREAM("No time correction parameters available for this dataset");
+  }
+
+
+  // create a view and advertise each of the topics to publish
   rosbag::View view(bag);
   AdvertiseTopics(view);
 
   ros::Time start_ros_time = ros::Time::now();
   ros::Time start_frame_time = ros::Time(0);
 
-  // For each message in the rosbag
+  // for each message in the rosbag
   for(rosbag::MessageInstance const m: view)
   {
     std::string const& topic = m.getTopic();
     ros::Time const& time = m.getTime();
-    std::string callerid = m.getCallerId();
-    std::string callerid_topic = callerid + topic;
 
-    std::map<std::string, ros::Publisher>::iterator pub_iter = publishers.find(callerid_topic);
-
+    // all of the publishers should be available due to the AdvertiseTopics function
+    std::map<std::string, ros::Publisher>::iterator pub_iter = publishers.find(m.getCallerId() + topic);
     ROS_ASSERT(pub_iter != publishers.end());
 
+    // If the message is a transform, add it to the buffer
     const auto tf = m.instantiate<tf2_msgs::TFMessage>();
     if (tf) {
       for (const auto &transform: tf->transforms) {
@@ -164,39 +193,29 @@ void h264_bag_playback::ReadFromBag() {
     if (keep_last_of_string(topic, "/") == "camera_info") {
       std::string camera_name = keep_last_of_string(remove_last_of_string(topic, "/"), "/");
 
-      sensor_msgs::CameraInfo::ConstPtr s = m.instantiate<sensor_msgs::CameraInfo>();
-      if (s != NULL) {
+      sensor_msgs::CameraInfo::ConstPtr cam_info_msg = m.instantiate<sensor_msgs::CameraInfo>();
+      if (cam_info_msg != NULL) {
         sensor_msgs::CameraInfo::Ptr scaled_info_msg(new sensor_msgs::CameraInfo());
-        *scaled_info_msg = *s;
 
+        // copy the camera info parameters to the rescaled version
+        *scaled_info_msg = *cam_info_msg;
 
         if (scaled_height && scaled_width) {
-          double scale_y = static_cast<double>(scaled_height) / s->height;
-          double scale_x = static_cast<double>(scaled_width) / s->width;
-
-          scaled_info_msg->height = scaled_height;
-          scaled_info_msg->width = scaled_width;
-
-          scaled_info_msg->K[0] = scaled_info_msg->K[0] * scale_x;  // fx
-          scaled_info_msg->K[2] = scaled_info_msg->K[2] * scale_x;  // cx
-          scaled_info_msg->K[4] = scaled_info_msg->K[4] * scale_y;  // fy
-          scaled_info_msg->K[5] = scaled_info_msg->K[5] * scale_y;  // cy
-
-          scaled_info_msg->P[0] = scaled_info_msg->P[0] * scale_x;  // fx
-          scaled_info_msg->P[2] = scaled_info_msg->P[2] * scale_x;  // cx
-          scaled_info_msg->P[3] = scaled_info_msg->P[3] * scale_x;  // T
-          scaled_info_msg->P[5] = scaled_info_msg->P[5] * scale_y;  // fy
-          scaled_info_msg->P[6] = scaled_info_msg->P[6] * scale_y;  // cy
+          ScaleCameraInfoMsg(cam_info_msg->width,
+              scaled_width,
+              cam_info_msg->height,
+              scaled_height,
+              scaled_info_msg);
         }
 
         if (!videos[camera_name].valid_camera_info) {
           videos[camera_name].InitialiseCameraInfo(*scaled_info_msg);
         }
 
-        //MessagePublisher(pub_iter->second, scaled_info_msg);
         // todo: make this go through the MessagePublisher structure
-        //pub_iter->second.publish(scaled_info_msg);
+        //MessagePublisher(pub_iter->second, scaled_info_msg);
         CameraInfoPublisher(pub_iter->second, scaled_info_msg);
+
         ros::spinOnce();
       }
     }
@@ -211,47 +230,45 @@ void h264_bag_playback::ReadFromBag() {
 
       ros::Duration time_difference = (time - start_frame_time) - (ros::Time::now() - start_ros_time);
 
+      // hold back the playback to be realtime if limit_playback_speed parameter is set
       if (limit_playback_speed && time_difference.toSec() > 0) {
         time_difference.sleep();
       }
 
       std::string camera_name = keep_last_of_string(remove_last_of_string(topic, "/"), "/");
 
-      gmsl_frame_msg::FrameInfo::ConstPtr s = m.instantiate<gmsl_frame_msg::FrameInfo>();
-      if (s != NULL) {
-        
-        ros::Time temp_stamp,camera_stamp,temp;
-      
-        if (save_time_diff ) {
-           temp = ros::Time((s->camera_timestamp) / 1000000, ((s->camera_timestamp) % 1000000) * 1000);
-           dur=s->header.stamp-temp;
-           save_time_diff=false;
+      gmsl_frame_msg::FrameInfo::ConstPtr frame_info_msg = m.instantiate<gmsl_frame_msg::FrameInfo>();
+      if (frame_info_msg != NULL) {
+
+        ros::Time nvidia_timestamp = ros::Time((frame_info_msg->camera_timestamp) / 1000000.0, ((frame_info_msg->camera_timestamp) % 1000000) * 1000.0);
+
+        // calculate the time bias between the camera/ROS if not already done
+        if (!camera_time_bias_flag) {
+           camera_time_bias = frame_info_msg->header.stamp - nvidia_timestamp;
+           camera_time_bias_flag = true;
         }
 
-        temp_stamp = ros::Time((s->camera_timestamp) / 1000000, ((s->camera_timestamp) % 1000000) * 1000);
+        ros::Time adjusted_image_stamp;
 
-        if (fabs(dur.toSec()) > 0.5) {
-          camera_stamp = temp_stamp + dur - time_offset;
+        if (fabs(camera_time_bias.toSec()) > 0.5) {
+          adjusted_image_stamp = nvidia_timestamp + camera_time_bias - time_offset;
         }
         else {
-          camera_stamp = temp_stamp - time_offset;
+          adjusted_image_stamp = nvidia_timestamp - time_offset;
         }
 
-        //std::cout << "camera stamp " << camera_stamp.toNSec() << std::endl;
-
-         
-        // Check that someone has subscribed to this camera's images
+        // Check that someone has subscribed to this camera'frame_info_msg images
         if (!(videos[camera_name].corrected_publisher.getNumSubscribers() == 0 &&
             videos[camera_name].uncorrected_publisher.getNumSubscribers() == 0))
         {
 
           Video &current_video = videos[camera_name];
-          if (current_video.frame_counter < s->frame_counter) {
+          if (current_video.frame_counter < frame_info_msg->frame_counter) {
 
             // try to jump forward through the video
-            if (current_video.video_device.set(CV_CAP_PROP_POS_FRAMES, s->frame_counter)) {
+            if (current_video.video_device.set(CV_CAP_PROP_POS_FRAMES, frame_info_msg->frame_counter)) {
               cv::Mat new_frame;
-              while (ros::ok() && current_video.frame_counter < s->frame_counter) {
+              while (ros::ok() && current_video.frame_counter < frame_info_msg->frame_counter) {
                 current_video.video_device >> new_frame;
                 current_video.frame_counter++;
                 ROS_INFO_STREAM_THROTTLE(0.5, "throwing away frame for camera " << camera_name);
@@ -262,12 +279,12 @@ void h264_bag_playback::ReadFromBag() {
             // https://stackoverflow.com/questions/2974625/opencv-seek-function-rewind
             else {
               ROS_INFO_STREAM("tracking camera to frame " << camera_name);
-              current_video.frame_counter = s->frame_counter;
+              current_video.frame_counter = frame_info_msg->frame_counter;
             }
           }
 
           // check that the frame counter aligns with the number of frames in the video
-          if (current_video.frame_counter == s->frame_counter) {
+          if (current_video.frame_counter == frame_info_msg->frame_counter) {
 
             cv::Mat new_frame;
 
@@ -305,9 +322,9 @@ void h264_bag_playback::ReadFromBag() {
 
                 cv_ptr->image = output_image;
                 cv_ptr->encoding = "bgr8";
-                cv_ptr->header.stamp = camera_stamp;
+                cv_ptr->header.stamp = adjusted_image_stamp;
                 cv_ptr->header.frame_id = frame_id_dict[camera_name];
-                cv_ptr->header.seq = s->global_counter;
+                cv_ptr->header.seq = frame_info_msg->global_counter;
 
                 auto image_message = cv_ptr->toImageMsg();
                 ImagePublisher(current_video.corrected_publisher, image_message);
@@ -319,9 +336,9 @@ void h264_bag_playback::ReadFromBag() {
               if (videos[camera_name].uncorrected_publisher.getNumSubscribers() > 0) {
                 cv_ptr->image = new_frame;
                 cv_ptr->encoding = "bgr8";
-                cv_ptr->header.stamp = camera_stamp;
+                cv_ptr->header.stamp = adjusted_image_stamp;
                 cv_ptr->header.frame_id = frame_id_dict[camera_name];
-                cv_ptr->header.seq = s->global_counter;
+                cv_ptr->header.seq = frame_info_msg->global_counter;
 
                 //current_video.uncorrected_publisher.publish(cv_ptr->toImageMsg());
                 auto image_message = cv_ptr->toImageMsg();

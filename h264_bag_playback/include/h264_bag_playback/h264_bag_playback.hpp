@@ -50,6 +50,15 @@ protected:
 
   void AdvertiseTopics(rosbag::View &view);
 
+  // scale the camera info message for a different output size
+
+
+  void ScaleCameraInfoMsg(int original_width,
+                          int scaled_width,
+                          int original_height,
+                          int scaled_height,
+                          sensor_msgs::CameraInfo::Ptr &scaled_info_msg);
+
   // A publisher for each topic in the bag
   std::map<std::string, ros::Publisher> publishers;
 
@@ -74,8 +83,8 @@ protected:
 
   image_transport::ImageTransport image_transport;
 
-  bool save_time_diff = true;
-  ros::Duration dur;
+  bool camera_time_bias_flag = false;
+  ros::Duration camera_time_bias;
 
 };
 
