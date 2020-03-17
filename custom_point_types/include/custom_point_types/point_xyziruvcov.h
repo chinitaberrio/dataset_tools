@@ -18,6 +18,7 @@ namespace pcl
     float cov_yy;
     float cov_zz;
     float cov_xy;
+    float cov_xz;
     float cov_yz;
     float cov_UU;
     float cov_VV;
@@ -41,6 +42,7 @@ POINT_CLOUD_REGISTER_POINT_STRUCT (PointXYZIRUVCOV,
       (float, cov_yy, cov_yy)
       (float, cov_zz, cov_zz)
       (float, cov_xy, cov_xy)
+      (float, cov_xz, cov_xz)
       (float, cov_yz, cov_yz)
       (float, cov_UU, cov_UU)
       (float, cov_VV, cov_VV)
