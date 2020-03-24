@@ -41,16 +41,16 @@ catkin_package(
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 
-## Create the nodelet tutorial library
-#add_executable(${PROJECT_NAME}_node
-#		src/h264_bag_playback.cpp
-#		src/video.cpp
-#		src/helper_functions.cpp)
+# Create the nodelet tutorial library
+add_executable(${PROJECT_NAME}_node
+		src/h264_bag_playback.cpp
+		src/video.cpp
+		src/helper_functions.cpp)
 
-#target_link_libraries(${PROJECT_NAME}_node
-#		${catkin_LIBRARIES}
-#		${OpenCV_LIBS})
-#
+target_link_libraries(${PROJECT_NAME}_node
+		${catkin_LIBRARIES}
+		${OpenCV_LIBS})
+
 
 add_library(${PROJECT_NAME}
 		src/h264_bag_playback.cpp
@@ -67,12 +67,12 @@ if(catkin_EXPORTED_LIBRARIES)
 		  ${catkin_LIBRARIES}
 		  ${OpenCV_LIBS})
 endif()
-#
-#install(TARGETS ${PROJECT_NAME}_node
-#		ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-#		LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-#		RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
-#
+
+install(TARGETS ${PROJECT_NAME}_node
+		ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+		LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+		RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+
 
 ## Mark the nodelet library for installations
 install(TARGETS ${PROJECT_NAME}

@@ -20,6 +20,23 @@ find_package(catkin REQUIRED COMPONENTS
   custom_point_types
 )
 
+
+## Generate messages in the 'msg' folder
+add_message_files(
+        FILES
+        Confidence.msg
+        Innovation.msg
+        LocaliserStats.msg
+)
+
+## Generate added messages and services with any dependencies listed here
+generate_messages(
+        DEPENDENCIES
+        std_msgs  # Or other packages containing msgs
+        dataset_tools
+)
+
+
 catkin_package(
   LIBRARIES ${PROJECT_NAME}
   CATKIN_DEPENDS nav_msgs sensor_msgs std_msgs sensor_msgs gmsl_frame_msg rosbag
@@ -48,6 +65,9 @@ target_link_libraries(${PROJECT_NAME}
 )
 
 
+# Mark other files for installation (e.g. launch and bag files, etc.)
+install(DIRECTORY
+        DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION} )
 
 install(DIRECTORY include/${PROJECT_NAME}/
         DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION})

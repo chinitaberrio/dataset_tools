@@ -27,6 +27,12 @@ BagOutput::~BagOutput() {
 }
 
 
+void BagOutput::publish_stats(dataset_tools::LocaliserStats &msg, std::string topic_name){
+  if (bag->isOpen())
+    bag->write(topic_name, msg.header.stamp, msg);
+}
+
+
 void BagOutput::publish_odom(nav_msgs::Odometry &msg, std::string topic_name) {
   if (bag->isOpen())
     bag->write(topic_name, msg.header.stamp, msg);

@@ -5,6 +5,8 @@
 #include <nav_msgs/Odometry.h>
 #include <sensor_msgs/NavSatFix.h>
 
+#include <dataset_tools/LocaliserStats.h>
+
 #include <tf/transform_datatypes.h>
 
 
@@ -27,6 +29,7 @@ public:
   void publish_odom(nav_msgs::Odometry &msg, std::string topic_name);
   void publish_fix(sensor_msgs::NavSatFix &msg, std::string topic_name);
   void publish_tf(tf::StampedTransform &msg, std::string topic_name);
+  void publish_stats(dataset_tools::LocaliserStats &msg, std::string topic_name);
 
   std::shared_ptr<rosbag::Bag> bag;
 };
