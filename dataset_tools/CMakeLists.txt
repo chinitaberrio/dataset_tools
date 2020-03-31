@@ -15,6 +15,7 @@ find_package(catkin REQUIRED COMPONENTS
   rosbag
   image_transport
   tf2
+  tf2_sensor_msgs
   tf2_geometry_msgs
   gmsl_frame_msg
   custom_point_types
