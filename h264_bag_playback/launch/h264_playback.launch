@@ -6,6 +6,16 @@
     <param name="limit_playback_speed" value="true" />
     <param name="bag_file" value="$(arg bag_file_name)"/>
 
+    <!-- Optional playback start and end time in ISO format.
+         If the start is missing, it will play from the beginning
+         If the end is missing, it will play through to the end
+         On startup, the ROS INFO message will print the start and end times for the bag -->
+
+    <!--
+    <param name="playback_start" value="2018-07-05T05:39:22.701861" />
+    <param name="playback_end" value="2018-07-05T05:40:22.701861" />
+    -->
+
   </node>
 
 </launch>

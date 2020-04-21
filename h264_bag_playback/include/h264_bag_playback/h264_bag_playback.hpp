@@ -51,8 +51,6 @@ protected:
   void AdvertiseTopics(rosbag::View &view);
 
   // scale the camera info message for a different output size
-
-
   void ScaleCameraInfoMsg(int original_width,
                           int scaled_width,
                           int original_height,
@@ -82,6 +80,10 @@ protected:
   ros::NodeHandle public_nh;
 
   image_transport::ImageTransport image_transport;
+
+  // parameters for selecting part of the dataset
+  ros::Time playback_start, playback_end;
+  ros::Duration playback_duration;
 
   bool camera_time_bias_flag = false;
   ros::Duration camera_time_bias;

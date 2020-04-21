@@ -1,6 +1,8 @@
 #include "h264_bag_playback.hpp"
 #include <glob.h>
 
+#include "boost/date_time/posix_time/posix_time.hpp"
+
 #include <opencv2/opencv.hpp>
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -43,7 +45,12 @@ namespace dataset_toolkit
 {
 
 
-h264_bag_playback::h264_bag_playback() : tf_buffer(std::make_shared<tf2::BufferCore>()), private_nh("~"), image_transport(public_nh) {
+h264_bag_playback::h264_bag_playback() :
+        tf_buffer(std::make_shared<tf2::BufferCore>()),
+        private_nh("~"),
+        image_transport(public_nh),
+        playback_start(ros::TIME_MIN),
+        playback_end(ros::TIME_MAX){
   //tf_buffer = std::make_shared<tf2::BufferCore>();
 }
 
@@ -158,9 +165,41 @@ void h264_bag_playback::ReadFromBag() {
     ROS_INFO_STREAM("No time correction parameters available for this dataset");
   }
 
+  rosbag::View overall_view(bag);
 
-  // create a view and advertise each of the topics to publish
-  rosbag::View view(bag);
+  ros::Time bag_start_time = overall_view.getBeginTime();
+  ros::Time bag_end_time = overall_view.getEndTime();
+
+  ROS_INFO_STREAM("Bag start time " << boost::posix_time::to_iso_extended_string(bag_start_time.toBoost()));
+  ROS_INFO_STREAM("Bag end time " << boost::posix_time::to_iso_extended_string(bag_end_time.toBoost()));
+
+  std::string start_time_param_string, end_time_param_string;
+  private_nh.getParam("playback_start", start_time_param_string);
+  private_nh.getParam("playback_end", end_time_param_string);
+
+  ros::Time requested_start_time = ros::TIME_MIN;
+  ros::Time requested_end_time = ros::TIME_MAX;
+
+  try {
+    ros::Time test_start_time = ros::Time::fromBoost(boost::posix_time::from_iso_extended_string(start_time_param_string));
+    requested_start_time = test_start_time;
+    ROS_INFO_STREAM("Requested start time " << start_time_param_string << " is " << requested_start_time);
+  }
+  catch (...) {
+    ROS_INFO_STREAM("Couldn't read start time string: starting from the beginning: " << start_time_param_string);
+  }
+
+  try {
+    ros::Time test_end_time = ros::Time::fromBoost(boost::posix_time::from_iso_extended_string(end_time_param_string));
+    requested_end_time = test_end_time;
+    ROS_INFO_STREAM("Requested end time " << end_time_param_string << " is " << requested_end_time);
+  }
+  catch (...) {
+    ROS_INFO_STREAM("Couldn't read end time string: running through to the end of the bag: " << end_time_param_string);
+  }
+
+      // create a view and advertise each of the topics to publish
+  rosbag::View view(bag, requested_start_time, requested_end_time);
   AdvertiseTopics(view);
 
   ros::Time start_ros_time = ros::Time::now();
@@ -188,6 +227,11 @@ void h264_bag_playback::ReadFromBag() {
         }
       }
     }
+
+
+// MOVE THIS INTO THE BAG VIEW OBJECT
+//    if (time < playback_start || time > playback_end)
+//      continue;
 
     // For each camera info msg, check whether we have stored the calibration parameters for this camera
     if (keep_last_of_string(topic, "/") == "camera_info") {
