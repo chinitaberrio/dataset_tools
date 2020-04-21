@@ -13,22 +13,36 @@ parameters:
 
     name="output_width" value in pixels
     set the width of the images
+    NOTE: if either of the width/height parameters are not defined (or set to 0) the
+    original image size is used
 
     name="output_height" value in pixels
     set the height of the images
+    NOTE: if either of the width/height parameters are not defined (or set to 0) the
+    original image size is used
 
-    NOTE: if either of the width/height parameters are not defined (or set to 0) the original image size is used
+    <Optional>
+    name="playback_start" value in iso format (i.e. "2018-07-05T05:39:22.701861")
+    If the start is missing, it will play from the beginning
+    On startup, the ROS INFO message will print the start and end times for the bag
+
+    <Optional>
+    name="playback_end" value in iso format (i.e. "2018-07-05T05:40:22.701861")
+    If the end is missing, it will play through to the end
+    On startup, the ROS INFO message will print the start and end times for the bag
 
     name="limit_playback_speed" value is boolean
-    Either playback the bag + images as fast as possible, or restrict to (close to) realtime playback
+    Either playback the bag + images as fast as possible, or restrict to (close to) 
+    realtime playback
 
     name="bag_file" value is a string
-    The name of the bag file to read. The h.264 files and camera names are automatically extracted from the bag file name
-    using the first part of the bag file name (without the extension) and the camera name separated using an '_'. Note
-    that this is the standard format for the files used in the ACFR campus dataset
+    The name of the bag file to read. The h.264 files and camera names are 
+    automatically extracted from the bag file name using the first part of the bag 
+    file name (without the extension) and the camera name separated using an '_'. 
+    Note that this is the standard format for the files used in the ACFR campus dataset
 
 example usage:
 
-    roslaunch h264_bag_tools h264_playback.launch bag_file_name:="/home/stew/data/callan-park/2019-04-15-14-37-06_callan_park_loop.bag"
+    roslaunch h264_bag_playback h264_playback.launch bag_file_name:="/home/stew/data/callan-park/2019-04-15-14-37-06_callan_park_loop.bag"
 
     NOTE: change the output image size in h264_playback.launch
