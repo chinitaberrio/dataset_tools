@@ -41,6 +41,10 @@ parameters:
     file name (without the extension) and the camera name separated using an '_'. 
     Note that this is the standard format for the files used in the ACFR campus dataset
 
+additional requirements:
+* The gmsl_frame_msg package is required, and is available at https://gitlab.acfr.usyd.edu.au/nvidia/gmsl_frame_msg
+* ros-kinetic-tf2-sensor-msgs or ros-melodic-tf2-sensor-msgs is required, this package is not usually installed by default in ROS and is available through apt
+
 example usage:
 
     roslaunch h264_bag_playback h264_playback.launch bag_file_name:="/home/stew/data/callan-park/2019-04-15-14-37-06_callan_park_loop.bag"
