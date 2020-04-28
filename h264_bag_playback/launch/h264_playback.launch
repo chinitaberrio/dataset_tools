@@ -12,9 +12,13 @@
          On startup, the ROS INFO message will print the start and end times for the bag -->
 
     <!--
-    <param name="playback_start" value="2018-07-05T05:39:22.701861" />
-    <param name="playback_end" value="2018-07-05T05:40:22.701861" />
+    <param name="time_start" value="2018-07-05T05:39:22.701861" />
+    <param name="time_end" value="2018-07-05T05:40:22.701861" />
+
+    <param name="percentage_start" value="0.1" />
+    <param name="percentage_end" value="10.7" />
     -->
+
 
   </node>
 

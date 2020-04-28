@@ -22,12 +22,22 @@ parameters:
     original image size is used
 
     <Optional>
-    name="playback_start" value in iso format (i.e. "2018-07-05T05:39:22.701861")
-    If the start is missing, it will play from the beginning
+    name="time_start" value in iso format (i.e. "2018-07-05T05:39:22.701861")
+    If both of time_start and percentage_start is missing, it will play from the beginning
     On startup, the ROS INFO message will print the start and end times for the bag
 
     <Optional>
-    name="playback_end" value in iso format (i.e. "2018-07-05T05:40:22.701861")
+    name="time_end" value in iso format (i.e. "2018-07-05T05:40:22.701861")
+    If both of time_end and playback_end is missing, it will play through to the end
+    On startup, the ROS INFO message will print the start and end times for the bag
+
+    <Optional>
+    name="percentage_start" value in floating-point percentage (i.e. "23.4" will play from 23.4% of bag)
+    If both of time_start and percentage_start is missing, it will play from the beginning
+    On startup, the ROS INFO message will print the start and end times for the bag
+
+    <Optional>
+    name="playback_end" value in floating-point percentage (i.e. "99.99" will play until 99.99% of bag)
     If the end is missing, it will play through to the end
     On startup, the ROS INFO message will print the start and end times for the bag
 
