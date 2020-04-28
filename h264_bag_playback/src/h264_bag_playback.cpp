@@ -169,13 +169,20 @@ void h264_bag_playback::ReadFromBag() {
 
   ros::Time bag_start_time = overall_view.getBeginTime();
   ros::Time bag_end_time = overall_view.getEndTime();
+  auto bag_duration = (bag_end_time-bag_start_time).toSec();
+
 
   ROS_INFO_STREAM("Bag start time " << boost::posix_time::to_iso_extended_string(bag_start_time.toBoost()));
   ROS_INFO_STREAM("Bag end time " << boost::posix_time::to_iso_extended_string(bag_end_time.toBoost()));
+  ROS_INFO_STREAM("Bag duration: " << bag_duration << " seconds");
+
 
   std::string start_time_param_string, end_time_param_string;
-  private_nh.getParam("playback_start", start_time_param_string);
-  private_nh.getParam("playback_end", end_time_param_string);
+  float start_percentage, end_percentage;
+  private_nh.getParam("time_start", start_time_param_string);
+  private_nh.getParam("time_end", end_time_param_string);
+  private_nh.param<float>("percentage_start", start_percentage, -1.1); // -1.1 is a random placeholder value to denote no param received
+  private_nh.param<float>("percentage_end", end_percentage, -1.1);
 
   ros::Time requested_start_time = ros::TIME_MIN;
   ros::Time requested_end_time = ros::TIME_MAX;
@@ -186,7 +193,7 @@ void h264_bag_playback::ReadFromBag() {
     ROS_INFO_STREAM("Requested start time " << start_time_param_string << " is " << requested_start_time);
   }
   catch (...) {
-    ROS_INFO_STREAM("Couldn't read start time string: starting from the beginning: " << start_time_param_string);
+    ROS_INFO_STREAM("Couldn't read start time string " << start_time_param_string);
   }
 
   try {
@@ -195,10 +202,36 @@ void h264_bag_playback::ReadFromBag() {
     ROS_INFO_STREAM("Requested end time " << end_time_param_string << " is " << requested_end_time);
   }
   catch (...) {
-    ROS_INFO_STREAM("Couldn't read end time string: running through to the end of the bag: " << end_time_param_string);
+    ROS_INFO_STREAM("Couldn't read end time string " << end_time_param_string);
   }
 
-      // create a view and advertise each of the topics to publish
+  if(start_percentage>=0 && end_percentage>start_percentage &&
+          requested_start_time == ros::TIME_MIN && requested_end_time == ros::TIME_MAX){
+      ROS_INFO_STREAM("Reading bag from " << start_percentage << "% to " << end_percentage << "%");
+      auto skip_start = bag_duration / 100 * start_percentage;
+      auto skip_end = bag_duration / 100 * end_percentage;
+
+      requested_start_time = bag_start_time + ros::Duration(skip_start);
+      requested_end_time = bag_start_time + ros::Duration(skip_end);
+  }else{
+      ROS_INFO_STREAM("Not using percentages. ");
+  }
+
+
+  if(requested_start_time == ros::TIME_MIN){
+    ROS_INFO_STREAM("starting from the beginning: " << start_time_param_string);
+  }else{
+    ROS_INFO_STREAM("Playback start from : " << boost::posix_time::to_iso_extended_string(requested_start_time.toBoost()));
+  }
+  if(requested_end_time == ros::TIME_MAX){
+    ROS_INFO_STREAM("running through to the end of the bag: " << end_time_param_string);
+  }else{
+    ROS_INFO_STREAM("Play until : " << boost::posix_time::to_iso_extended_string(requested_end_time.toBoost()));
+  }
+  ROS_INFO_STREAM("Playback duration : " << requested_end_time-requested_start_time << " seconds");
+
+
+  // create a view and advertise each of the topics to publish
   rosbag::View view(bag, requested_start_time, requested_end_time);
   AdvertiseTopics(view);
 
