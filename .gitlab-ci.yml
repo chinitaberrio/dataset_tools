@@ -19,6 +19,7 @@ build:
   script:
     - wget http://acfr-ros-pro-1.srv.sydney.edu.au:4440/build-ros-deb.sh
     - chmod +x ./build-ros-deb.sh
+    - roscore &
     - ./build-ros-deb.sh
   artifacts:
     paths:
