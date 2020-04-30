@@ -24,8 +24,13 @@
 
 
     void MessagePublisher(ros::Publisher &publisher, const rosbag::MessageInstance &message) {
-      //std::cout << "msg" << std::endl;
+      if (stats.find(message.getTopic()) == stats.end()) {
+        stats[message.getTopic()] = 0;
+      }
+
+      stats[message.getTopic()]++;
     }
+    std::map<std::string, int> stats;
   };
 
 
@@ -43,16 +48,108 @@
 
     std::string bag_file_name = std::string(TEST_DATA_LOCATION) + std::string("/pipeline.bag");
     DirectPlayback playback(bag_file_name);
+
+    // clear params
+    playback.private_nh.setParam("time_start", "");
+    playback.private_nh.setParam("time_end", "");
     playback.ReadFromBag();
 
-    EXPECT_TRUE(true);
+    for(auto elem : playback.stats){
+      std::cout << elem.first << " " << elem.second << std::endl;
+    }
+
+    // checked from test file using rosbag info
+    EXPECT_EQ(playback.stats["/vn100/imu"], 266);
+    EXPECT_EQ(playback.stats["/tf"], 114);
+    EXPECT_EQ(playback.stats["/velodyne_points"], 26);
   }
 
-  TEST_F(BagReaderTest, test_percentage_bag_read) {
+  TEST_F(BagReaderTest, test_full_bag_read_with_params) {
 
-    EXPECT_TRUE(true);
+    std::string bag_file_name = std::string(TEST_DATA_LOCATION) + std::string("/pipeline.bag");
+    DirectPlayback playback(bag_file_name);
+    playback.private_nh.setParam("time_start", "2018-02-18T22:42:40.30");
+    playback.private_nh.setParam("time_end", "2018-02-18T22:42:43.0");
+    playback.ReadFromBag();
+
+    // checked from test file using rosbag info
+    EXPECT_EQ(playback.stats["/vn100/imu"], 266);
+    EXPECT_EQ(playback.stats["/tf"], 114);
+    EXPECT_EQ(playback.stats["/velodyne_points"], 26);
+
   }
 
+  TEST_F(BagReaderTest, test_late_start) {
+
+  std::string bag_file_name = std::string(TEST_DATA_LOCATION) + std::string("/pipeline.bag");
+  DirectPlayback playback(bag_file_name);
+  playback.private_nh.setParam("time_start", "2018-02-18T22:42:41.30");
+  playback.private_nh.setParam("time_end", "");
+  playback.ReadFromBag();
+
+  // checked from test file using rqt_bag
+  EXPECT_LT(playback.stats["/vn100/imu"], 200);
+  EXPECT_LT(playback.stats["/tf"], 100);
+  EXPECT_EQ(playback.stats["/velodyne_points"], 17);
+
+  }
+
+  TEST_F(BagReaderTest, test_early_end) {
+
+  std::string bag_file_name = std::string(TEST_DATA_LOCATION) + std::string("/pipeline.bag");
+  DirectPlayback playback(bag_file_name);
+  playback.private_nh.setParam("time_start", "");
+  playback.private_nh.setParam("time_end", "2018-02-18T22:42:41.30");
+  playback.ReadFromBag();
+
+  // checked from test file using rqt_bag
+  EXPECT_LT(playback.stats["/vn100/imu"], 200);
+  EXPECT_LT(playback.stats["/tf"], 100);
+  EXPECT_EQ(playback.stats["/velodyne_points"], 9);
+
+  }
+
+  TEST_F(BagReaderTest, test_percentage_start) {
+
+  std::string bag_file_name = std::string(TEST_DATA_LOCATION) + std::string("/pipeline.bag");
+  DirectPlayback playback(bag_file_name);
+  playback.private_nh.setParam("time_start", "");
+  playback.private_nh.setParam("time_end", "");
+  playback.private_nh.setParam("percentage_start", "0.8");
+  playback.private_nh.setParam("percentage_end", "");
+  playback.ReadFromBag();
+
+  for(auto elem : playback.stats){
+  std::cout << elem.first << " " << elem.second << std::endl;
+  }
+
+  // checked from test file using rqt_bag
+  EXPECT_LT(playback.stats["/vn100/imu"], 50);
+  EXPECT_LT(playback.stats["/tf"], 50);
+  EXPECT_EQ(playback.stats["/velodyne_points"], 9);
+
+  }
+
+  TEST_F(BagReaderTest, test_percentage_end) {
+
+  std::string bag_file_name = std::string(TEST_DATA_LOCATION) + std::string("/pipeline.bag");
+  DirectPlayback playback(bag_file_name);
+  playback.private_nh.setParam("time_start", "");
+  playback.private_nh.setParam("time_end", "");
+  playback.private_nh.setParam("percentage_start", "");
+  playback.private_nh.setParam("percentage_end", "0.1");
+  playback.ReadFromBag();
+
+  for(auto elem : playback.stats){
+  std::cout << elem.first << " " << elem.second << std::endl;
+  }
+
+  // checked from test file using rqt_bag
+  EXPECT_LT(playback.stats["/vn100/imu"], 50);
+  EXPECT_LT(playback.stats["/tf"], 50);
+  EXPECT_EQ(playback.stats["/velodyne_points"], 9);
+
+  }
 
   int main(int argc, char **argv){
     testing::InitGoogleTest(&argc, argv);

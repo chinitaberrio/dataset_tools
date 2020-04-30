@@ -46,6 +46,9 @@ public:
 
   std::shared_ptr<tf2_ros::Buffer> transformer_;
 
+  ros::NodeHandle private_nh;
+  ros::NodeHandle public_nh;
+
 protected:
 
   virtual void onInit();
@@ -81,9 +84,6 @@ protected:
   virtual void CameraInfoPublisher(ros::Publisher &publisher, const sensor_msgs::CameraInfoConstPtr &message);
 
   virtual void StaticTfPublisher(rosbag::Bag &bag, bool do_publish=true);
-
-  ros::NodeHandle private_nh;
-  ros::NodeHandle public_nh;
 
   image_transport::ImageTransport image_transport;
 
