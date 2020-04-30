@@ -20,6 +20,7 @@
 //#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 //#include <tf2_sensor_msgs/tf2_sensor_msgs.h>
 #include <tf2/buffer_core.h>
+#include <tf2_ros/buffer.h>
 
 
 #include "video.hpp"
@@ -43,7 +44,7 @@ public:
 
   void ReadFromBag();
 
-  std::shared_ptr<tf2::BufferCore> tf_buffer;
+  std::shared_ptr<tf2_ros::Buffer> tf_buffer;
 
 protected:
 
@@ -78,6 +79,8 @@ protected:
   virtual void MessagePublisher(ros::Publisher &publisher, const rosbag::MessageInstance &message);
   virtual void ImagePublisher(image_transport::Publisher &publisher, const sensor_msgs::ImageConstPtr &message);
   virtual void CameraInfoPublisher(ros::Publisher &publisher, const sensor_msgs::CameraInfoConstPtr &message);
+
+  virtual void StaticTfPublisher(rosbag::Bag &bag, bool do_publish=true);
 
   ros::NodeHandle private_nh;
   ros::NodeHandle public_nh;
