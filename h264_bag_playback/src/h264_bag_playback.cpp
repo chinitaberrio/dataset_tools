@@ -184,8 +184,8 @@ void h264_bag_playback::ReadFromBag() {
   private_nh.param<float>("percentage_start", start_percentage, -1.1); // -1.1 is a random placeholder value to denote no param received
   private_nh.param<float>("percentage_end", end_percentage, -1.1);
 
-  ros::Time requested_start_time = ros::TIME_MIN;
-  ros::Time requested_end_time = ros::TIME_MAX;
+  ros::Time requested_start_time = bag_start_time;
+  ros::Time requested_end_time = bag_end_time;
 
   try {
     ros::Time test_start_time = ros::Time::fromBoost(boost::posix_time::from_iso_extended_string(start_time_param_string));
@@ -206,7 +206,7 @@ void h264_bag_playback::ReadFromBag() {
   }
 
   if(start_percentage>=0 && end_percentage>start_percentage &&
-          requested_start_time == ros::TIME_MIN && requested_end_time == ros::TIME_MAX){
+          requested_start_time == bag_start_time && requested_end_time == bag_end_time){
       ROS_INFO_STREAM("Reading bag from " << start_percentage << "% to " << end_percentage << "%");
       auto skip_start = bag_duration / 100 * start_percentage;
       auto skip_end = bag_duration / 100 * end_percentage;
@@ -218,12 +218,12 @@ void h264_bag_playback::ReadFromBag() {
   }
 
 
-  if(requested_start_time == ros::TIME_MIN){
+  if(requested_start_time == bag_start_time){
     ROS_INFO_STREAM("starting from the beginning: " << start_time_param_string);
   }else{
     ROS_INFO_STREAM("Playback start from : " << boost::posix_time::to_iso_extended_string(requested_start_time.toBoost()));
   }
-  if(requested_end_time == ros::TIME_MAX){
+  if(requested_end_time == bag_end_time){
     ROS_INFO_STREAM("running through to the end of the bag: " << end_time_param_string);
   }else{
     ROS_INFO_STREAM("Play until : " << boost::posix_time::to_iso_extended_string(requested_end_time.toBoost()));
