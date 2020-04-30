@@ -251,6 +251,12 @@ void h264_bag_playback::ReadFromBag() {
     std::string const& topic = m.getTopic();
     ros::Time const& time = m.getTime();
 
+
+    if (topic == "/tf_static" || topic == "tf_static") {
+      // static transforms are handled separately
+      continue;
+    }
+
     // all of the publishers should be available due to the AdvertiseTopics function
     std::map<std::string, ros::Publisher>::iterator pub_iter = publishers.find(m.getCallerId() + topic);
     ROS_ASSERT(pub_iter != publishers.end());
@@ -509,7 +515,7 @@ h264_bag_playback::AdvertiseTopics(rosbag::View &view) {
   {
     // skip adding tf static. static should be published by static tf broadcaster
     // so that if bag isn't played from begining, static will still be published
-    if (c->topic == "/tf_static") {
+    if (c->topic == "/tf_static" || c->topic == "tf_static") {
         continue;
     }
 
