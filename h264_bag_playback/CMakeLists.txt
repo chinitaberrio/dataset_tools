@@ -92,3 +92,18 @@ install(DIRECTORY config
 
 install(DIRECTORY include/${PROJECT_NAME}/
 		DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION})
+
+
+
+## Add gtest based cpp test target and link libraries
+get_filename_component(BAG_TEST_FOLDER "test/" ABSOLUTE)
+configure_file(test/bag_data.h.in test/bag_data.h)
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/test)
+
+catkin_add_gtest(${PROJECT_NAME}-test
+		test/test_playback.cpp
+		)
+
+if(TARGET ${PROJECT_NAME}-test)
+	target_link_libraries(${PROJECT_NAME}-test h264_bag_playback)
+endif()
