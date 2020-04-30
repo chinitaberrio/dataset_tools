@@ -34,12 +34,12 @@ parameters:
     <Optional>
     name="percentage_start" value in floating-point percentage (i.e. "23.4" will play from 23.4% of bag)
     If both of time_start and percentage_start is missing, it will play from the beginning
-    On startup, the ROS INFO message will print the start and end times for the bag
+    If at least one of time_start and time_end parameter pair is specified, percentage_start and percentage_end won't be processed
 
     <Optional>
-    name="playback_end" value in floating-point percentage (i.e. "99.99" will play until 99.99% of bag)
+    name="percentage_end" value in floating-point percentage (i.e. "99.99" will play until 99.99% of bag)
     If the end is missing, it will play through to the end
-    On startup, the ROS INFO message will print the start and end times for the bag
+    If at least one of time_start and time_end parameter pair is specified, percentage_start and percentage_end won't be processed
 
     name="limit_playback_speed" value is boolean
     Either playback the bag + images as fast as possible, or restrict to (close to) 
@@ -60,3 +60,11 @@ example usage:
     roslaunch h264_bag_playback h264_playback.launch bag_file_name:="/home/stew/data/callan-park/2019-04-15-14-37-06_callan_park_loop.bag"
 
     NOTE: change the output image size in h264_playback.launch
+
+
+
+tests:
+
+    a new roscore has to be spinned up for all tests to pass.
+
+    catkin run_tests --no-deps --this --verbose
