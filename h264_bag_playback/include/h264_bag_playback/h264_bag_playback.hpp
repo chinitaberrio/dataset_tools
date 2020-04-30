@@ -1,3 +1,6 @@
+#ifndef H264_BAG_PLAYBACK_HEADER
+#define H264_BAG_PLAYBACK_HEADER
+
 #include <iostream>
 
 #include <pluginlib/class_list_macros.h>
@@ -91,3 +94,6 @@ protected:
 };
 
 }
+
+
+#endif
