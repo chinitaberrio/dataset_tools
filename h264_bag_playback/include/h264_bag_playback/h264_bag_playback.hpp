@@ -19,7 +19,7 @@
 #include <tf2_msgs/TFMessage.h>
 //#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 //#include <tf2_sensor_msgs/tf2_sensor_msgs.h>
-#include <tf2/buffer_core.h>
+//#include <tf2/buffer_core.h>
 #include <tf2_ros/buffer.h>
 
 
@@ -44,13 +44,13 @@ public:
 
   void ReadFromBag();
 
-  std::shared_ptr<tf2_ros::Buffer> tf_buffer;
+  std::shared_ptr<tf2_ros::Buffer> transformer_;
 
 protected:
 
   virtual void onInit();
 
-  void BagReader(std::string file_name);
+//  void BagReader(std::string file_name);
 
   void AdvertiseTopics(rosbag::View &view);
 
@@ -93,10 +93,9 @@ protected:
 
   bool camera_time_bias_flag = false;
   ros::Duration camera_time_bias;
-
 };
 
 }
 
 
-#endif
+#endif\ No newline at end of file

@@ -18,7 +18,6 @@
 #include <gmsl_frame_msg/FrameInfo.h>
 
 #include <tf2_ros/static_transform_broadcaster.h>
-#include <tf2_ros/transform_broadcaster.h>
 
 #include "helper_functions.hpp"
 #include "video.hpp"
@@ -49,12 +48,12 @@ namespace dataset_toolkit
 
 
 h264_bag_playback::h264_bag_playback() :
-        tf_buffer(std::make_shared<tf2_ros::Buffer>()),
+        transformer_(std::make_shared<tf2_ros::Buffer>()),
         private_nh("~"),
         image_transport(public_nh),
         playback_start(ros::TIME_MIN),
         playback_end(ros::TIME_MAX){
-  //tf_buffer = std::make_shared<tf2::BufferCore>();
+  //transformer_ = std::make_shared<tf2::BufferCore>();
 }
 
 
@@ -208,7 +207,7 @@ void h264_bag_playback::ReadFromBag() {
     ROS_INFO_STREAM("Couldn't read end time string " << end_time_param_string);
   }
 
-  if(start_percentage>=0 && end_percentage>start_percentage &&
+  if(start_percentage>=0 && end_percentage>start_percentage && end_percentage<=100 &&
           requested_start_time == bag_start_time && requested_end_time == bag_end_time){
       ROS_INFO_STREAM("Reading bag from " << start_percentage << "% to " << end_percentage << "%");
       auto skip_start = bag_duration / 100 * start_percentage;
@@ -233,7 +232,6 @@ void h264_bag_playback::ReadFromBag() {
   }
   ROS_INFO_STREAM("Playback duration : " << requested_end_time-requested_start_time << " seconds");
 
-
   // create a view and advertise each of the topics to publish
   rosbag::View view(bag, requested_start_time, requested_end_time);
   AdvertiseTopics(view);
@@ -244,6 +242,12 @@ void h264_bag_playback::ReadFromBag() {
   // tf static should be published by static tf broadcaster
   // so that if bag isn't played from begining, static will still be published
   StaticTfPublisher(bag);
+
+  // creat a tf bag view object so that we can view future tf msgs
+  std::vector<std::string> tf_topics{"tf", "/tf"};
+  rosbag::View tf_view(bag, rosbag::TopicQuery(tf_topics));
+  rosbag::View::iterator tf_iter = tf_view.begin();
+  ros::Time last_tf_time(0.1);
 
   // for each message in the rosbag
   for(rosbag::MessageInstance const m: view)
@@ -261,17 +265,18 @@ void h264_bag_playback::ReadFromBag() {
     std::map<std::string, ros::Publisher>::iterator pub_iter = publishers.find(m.getCallerId() + topic);
     ROS_ASSERT(pub_iter != publishers.end());
 
-    // If the message is a transform, add it to the buffer
-    const auto tf = m.instantiate<tf2_msgs::TFMessage>();
-    if (tf) {
+    // query the bag tf msgs so that transformer buffers a tf tree from (current msg time - 8s) to (current msg time + 2s)
+    // this however does not affect replay publishing of tf msgs. Tf msgs are still published at their bag times
+    while (tf_iter != tf_view.end()
+        && last_tf_time < time + ros::Duration(2)) {
+      // Load more transforms into the TF buffer
+      auto tf = tf_iter->instantiate<tf2_msgs::TFMessage>();
+
       for (const auto &transform: tf->transforms) {
-        if (m.getTopic() == "/tf_static") {
-          tf_buffer->setTransform(transform, "zio", true);
-        }
-        else {
-          tf_buffer->setTransform(transform, "zio", false);
-        }
+        transformer_->setTransform(transform, "zio", false);
+        last_tf_time = transform.header.stamp;
       }
+      tf_iter++;
     }
 
 
@@ -500,12 +505,10 @@ void h264_bag_playback::StaticTfPublisher(rosbag::Bag &bag, bool do_publish) {
     if(do_publish)
       static_broadcaster.sendTransform(tf->transforms);
     for (const auto &transform: tf->transforms) {
-      tf_buffer->setTransform(transform, "zio", true);
+      transformer_->setTransform(transform, "zio", true);
     }
   }
 }
-
-
 
 void
 h264_bag_playback::AdvertiseTopics(rosbag::View &view) {
