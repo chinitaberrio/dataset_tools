@@ -126,7 +126,7 @@
   // checked from test file using rqt_bag
   EXPECT_LT(playback.stats["/vn100/imu"], 50);
   EXPECT_LT(playback.stats["/tf"], 50);
-  EXPECT_EQ(playback.stats["/velodyne_points"], 9);
+  EXPECT_LT(playback.stats["/velodyne_points"], 9);
 
   }
 
@@ -147,9 +147,32 @@
   // checked from test file using rqt_bag
   EXPECT_LT(playback.stats["/vn100/imu"], 50);
   EXPECT_LT(playback.stats["/tf"], 50);
-  EXPECT_EQ(playback.stats["/velodyne_points"], 9);
+  EXPECT_LT(playback.stats["/velodyne_points"], 9);
 
   }
+
+
+  TEST_F(BagReaderTest, test_percentage_mid) {
+
+  std::string bag_file_name = std::string(TEST_DATA_LOCATION) + std::string("/pipeline.bag");
+  DirectPlayback playback(bag_file_name);
+  playback.private_nh.setParam("time_start", "");
+  playback.private_nh.setParam("time_end", "");
+  playback.private_nh.setParam("percentage_start", "0.1");
+  playback.private_nh.setParam("percentage_end", "0.2");
+  playback.ReadFromBag();
+
+  for(auto elem : playback.stats){
+  std::cout << elem.first << " " << elem.second << std::endl;
+  }
+
+  // checked from test file using rqt_bag
+  EXPECT_LT(playback.stats["/vn100/imu"], 50);
+  EXPECT_LT(playback.stats["/tf"], 50);
+  EXPECT_LT(playback.stats["/velodyne_points"], 9);
+
+  }
+
 
   int main(int argc, char **argv){
     testing::InitGoogleTest(&argc, argv);
