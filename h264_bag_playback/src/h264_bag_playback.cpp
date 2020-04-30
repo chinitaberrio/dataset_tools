@@ -17,6 +17,9 @@
 #include <sensor_msgs/CameraInfo.h>
 #include <gmsl_frame_msg/FrameInfo.h>
 
+#include <tf2_ros/static_transform_broadcaster.h>
+#include <tf2_ros/transform_broadcaster.h>
+
 #include "helper_functions.hpp"
 #include "video.hpp"
 
@@ -46,7 +49,7 @@ namespace dataset_toolkit
 
 
 h264_bag_playback::h264_bag_playback() :
-        tf_buffer(std::make_shared<tf2::BufferCore>()),
+        tf_buffer(std::make_shared<tf2_ros::Buffer>()),
         private_nh("~"),
         image_transport(public_nh),
         playback_start(ros::TIME_MIN),
@@ -237,6 +240,10 @@ void h264_bag_playback::ReadFromBag() {
 
   ros::Time start_ros_time = ros::Time::now();
   ros::Time start_frame_time = ros::Time(0);
+
+  // tf static should be published by static tf broadcaster
+  // so that if bag isn't played from begining, static will still be published
+  StaticTfPublisher(bag);
 
   // for each message in the rosbag
   for(rosbag::MessageInstance const m: view)
@@ -470,6 +477,28 @@ h264_bag_playback::ImagePublisher(image_transport::Publisher &publisher, const s
 }
 
 
+void h264_bag_playback::StaticTfPublisher(rosbag::Bag &bag, bool do_publish) {
+
+  static tf2_ros::StaticTransformBroadcaster static_broadcaster;
+
+  // Build a TF tree
+  std::cout << "Loading static TF tree data" << std::endl;
+
+  std::vector<std::string> topics;
+
+  topics.push_back(std::string("tf_static"));
+  topics.push_back(std::string("/tf_static"));
+  rosbag::View view(bag, rosbag::TopicQuery(topics));
+  for(rosbag::MessageInstance const &m: view) {
+    const auto tf = m.instantiate<tf2_msgs::TFMessage>();
+    if(do_publish)
+      static_broadcaster.sendTransform(tf->transforms);
+    for (const auto &transform: tf->transforms) {
+      tf_buffer->setTransform(transform, "zio", true);
+    }
+  }
+}
+
 
 
 void
@@ -478,6 +507,12 @@ h264_bag_playback::AdvertiseTopics(rosbag::View &view) {
   // Create a publisher and advertise for all of our message types
   for(const rosbag::ConnectionInfo* c: view.getConnections())
   {
+    // skip adding tf static. static should be published by static tf broadcaster
+    // so that if bag isn't played from begining, static will still be published
+    if (c->topic == "/tf_static") {
+        continue;
+    }
+
     ros::M_string::const_iterator header_iter = c->header->find("callerid");
     std::string callerid = (header_iter != c->header->end() ? header_iter->second : std::string(""));
 
@@ -488,16 +523,10 @@ h264_bag_playback::AdvertiseTopics(rosbag::View &view) {
 
       ros::AdvertiseOptions opts = rosbag::createAdvertiseOptions(c, 10);
 
-      // latch the topic tf_static
-      if (c->topic == "/tf_static") {
-        ROS_INFO_STREAM("latching topic " << c->topic);
-        opts.latch = true;
-      }
-
       ros::Publisher pub = public_nh.advertise(opts);
       publishers.insert(publishers.begin(), std::pair<std::string, ros::Publisher>(callerid_topic, pub));
 
-      pub_iter = publishers.find(callerid_topic);
+//      pub_iter = publishers.find(callerid_topic); // this line seems to be doing nothing here
     }
   }
 }
