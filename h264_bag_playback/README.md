@@ -32,12 +32,12 @@ parameters:
     On startup, the ROS INFO message will print the start and end times for the bag
 
     <Optional>
-    name="percentage_start" value in floating-point percentage (i.e. "23.4" will play from 23.4% of bag)
+    name="percentage_start" value in floating-point percentage (i.e. 23.4 will play from 23.4% of bag)
     If both of time_start and percentage_start is missing, it will play from the beginning
     If at least one of time_start and time_end parameter pair is specified, percentage_start and percentage_end won't be processed
 
     <Optional>
-    name="percentage_end" value in floating-point percentage (i.e. "99.99" will play until 99.99% of bag)
+    name="percentage_end" value in floating-point percentage (i.e. 99.99 will play until 99.99% of bag)
     If the end is missing, it will play through to the end
     If at least one of time_start and time_end parameter pair is specified, percentage_start and percentage_end won't be processed
 
