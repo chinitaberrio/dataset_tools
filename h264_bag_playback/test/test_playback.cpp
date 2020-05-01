@@ -2,6 +2,8 @@
 
   #include <iostream>
 
+  #include <math.h>
+
   #include "h264_bag_playback.hpp"
   #include "bag_data.h"
 
@@ -115,8 +117,8 @@
   DirectPlayback playback(bag_file_name);
   playback.private_nh.setParam("time_start", "");
   playback.private_nh.setParam("time_end", "");
-  playback.private_nh.setParam("percentage_start", "0.8");
-  playback.private_nh.setParam("percentage_end", "");
+  playback.private_nh.setParam("percentage_start", 99.8);
+  playback.private_nh.setParam("percentage_end", -0.1);
   playback.ReadFromBag();
 
   for(auto elem : playback.stats){
@@ -136,8 +138,8 @@
   DirectPlayback playback(bag_file_name);
   playback.private_nh.setParam("time_start", "");
   playback.private_nh.setParam("time_end", "");
-  playback.private_nh.setParam("percentage_start", "");
-  playback.private_nh.setParam("percentage_end", "0.1");
+  playback.private_nh.setParam("percentage_start", NAN);
+  playback.private_nh.setParam("percentage_end", 0.1);
   playback.ReadFromBag();
 
   for(auto elem : playback.stats){
@@ -158,8 +160,8 @@
   DirectPlayback playback(bag_file_name);
   playback.private_nh.setParam("time_start", "");
   playback.private_nh.setParam("time_end", "");
-  playback.private_nh.setParam("percentage_start", "0.1");
-  playback.private_nh.setParam("percentage_end", "0.2");
+  playback.private_nh.setParam("percentage_start", 0.1);
+  playback.private_nh.setParam("percentage_end", 0.2);
   playback.ReadFromBag();
 
   for(auto elem : playback.stats){

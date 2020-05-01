@@ -183,8 +183,11 @@ void h264_bag_playback::ReadFromBag() {
   float start_percentage, end_percentage;
   private_nh.getParam("time_start", start_time_param_string);
   private_nh.getParam("time_end", end_time_param_string);
-  private_nh.param<float>("percentage_start", start_percentage, -1.1); // -1.1 is a random placeholder value to denote no param received
-  private_nh.param<float>("percentage_end", end_percentage, -1.1);
+  private_nh.param<float>("percentage_start", start_percentage, 0); // -1.1 is a random placeholder value to denote no param received
+  private_nh.param<float>("percentage_end", end_percentage, 100);
+
+  ROS_INFO_STREAM("Requested start percentage " << start_percentage );
+  ROS_INFO_STREAM("Requested end percentage " << end_percentage );
 
   ros::Time requested_start_time = bag_start_time;
   ros::Time requested_end_time = bag_end_time;
@@ -207,16 +210,20 @@ void h264_bag_playback::ReadFromBag() {
     ROS_INFO_STREAM("Couldn't read end time string " << end_time_param_string);
   }
 
-  if(start_percentage>=0 && end_percentage>start_percentage && end_percentage<=100 &&
-          requested_start_time == bag_start_time && requested_end_time == bag_end_time){
-      ROS_INFO_STREAM("Reading bag from " << start_percentage << "% to " << end_percentage << "%");
-      auto skip_start = bag_duration / 100 * start_percentage;
-      auto skip_end = bag_duration / 100 * end_percentage;
+  if(requested_start_time == bag_start_time && requested_end_time == bag_end_time){
+      if(!(start_percentage>=0 && start_percentage<100)){
+          start_percentage = 0;
+      }
+      if(!(end_percentage<=100 && end_percentage>0)){
+          end_percentage = 100;
+      }
+      auto duration_percentage = end_percentage - start_percentage;
+      if(duration_percentage<100 && duration_percentage>0){
+          ROS_INFO_STREAM("Reading bag from " << start_percentage << "% to " << end_percentage << "%");
 
-      requested_start_time = bag_start_time + ros::Duration(skip_start);
-      requested_end_time = bag_start_time + ros::Duration(skip_end);
-  }else{
-      ROS_INFO_STREAM("Not using percentages. ");
+          requested_start_time = bag_start_time + ros::Duration(bag_duration / 100 * start_percentage);
+          requested_end_time = bag_start_time + ros::Duration(bag_duration / 100 * end_percentage);
+      }
   }
 
 
@@ -254,7 +261,6 @@ void h264_bag_playback::ReadFromBag() {
   {
     std::string const& topic = m.getTopic();
     ros::Time const& time = m.getTime();
-
 
     if (topic == "/tf_static" || topic == "tf_static") {
       // static transforms are handled separately
