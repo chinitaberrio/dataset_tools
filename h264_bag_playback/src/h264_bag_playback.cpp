@@ -49,6 +49,7 @@ namespace dataset_toolkit
 
 h264_bag_playback::h264_bag_playback() :
         transformer_(std::make_shared<tf2_ros::Buffer>()),
+        horizonInBuffer(false),
         private_nh("~"),
         image_transport(public_nh),
         playback_start(ros::TIME_MIN),
@@ -244,17 +245,27 @@ void h264_bag_playback::ReadFromBag() {
   AdvertiseTopics(view);
 
   ros::Time start_ros_time = ros::Time::now();
+  ros::Time start_imu_time = ros::Time(0);
   ros::Time start_frame_time = ros::Time(0);
 
   // tf static should be published by static tf broadcaster
   // so that if bag isn't played from begining, static will still be published
   StaticTfPublisher(bag);
 
+
+  private_nh.param<bool>("horizon_in_buffer", horizonInBuffer, false);
+
   // creat a tf bag view object so that we can view future tf msgs
   std::vector<std::string> tf_topics{"tf", "/tf"};
-  rosbag::View tf_view(bag, rosbag::TopicQuery(tf_topics));
+  rosbag::View tf_view(bag, rosbag::TopicQuery(tf_topics), requested_start_time, requested_end_time);
   rosbag::View::iterator tf_iter = tf_view.begin();
   ros::Time last_tf_time(0.1);
+
+  std::vector<std::string> imu_topics{"vn100/imu", "/vn100/imu"};
+  rosbag::View imu_view(bag, rosbag::TopicQuery(imu_topics), requested_start_time, requested_end_time);
+  rosbag::View::iterator imu_iter = imu_view.begin();
+  ros::Time last_imu_time(0.01);
+
 
   // for each message in the rosbag
   for(rosbag::MessageInstance const m: view)
@@ -270,20 +281,6 @@ void h264_bag_playback::ReadFromBag() {
     // all of the publishers should be available due to the AdvertiseTopics function
     std::map<std::string, ros::Publisher>::iterator pub_iter = publishers.find(m.getCallerId() + topic);
     ROS_ASSERT(pub_iter != publishers.end());
-
-    // query the bag tf msgs so that transformer buffers a tf tree from (current msg time - 8s) to (current msg time + 2s)
-    // this however does not affect replay publishing of tf msgs. Tf msgs are still published at their bag times
-    while (tf_iter != tf_view.end()
-        && last_tf_time < time + ros::Duration(2)) {
-      // Load more transforms into the TF buffer
-      auto tf = tf_iter->instantiate<tf2_msgs::TFMessage>();
-
-      for (const auto &transform: tf->transforms) {
-        transformer_->setTransform(transform, "zio", false);
-        last_tf_time = transform.header.stamp;
-      }
-      tf_iter++;
-    }
 
 
 // MOVE THIS INTO THE BAG VIEW OBJECT
@@ -456,7 +453,84 @@ void h264_bag_playback::ReadFromBag() {
       MessagePublisher(pub_iter->second, m);
       ros::spinOnce();
     }
-    else {
+    else if (topic == "vn100/imu" || topic == "/vn100/imu") {
+
+        auto msg = m.instantiate<sensor_msgs::Imu>();
+        if (msg) {
+          auto header_time = msg->header.stamp;
+
+          // query the bag tf msgs so that transformer buffers a tf tree from (current msg time - 8s) to (current msg time + 2s)
+          // this however does not affect replay publishing of tf msgs. Tf msgs are still published at their bag times
+          while (tf_iter != tf_view.end()
+              && last_tf_time < header_time + ros::Duration(2)) {
+
+              // Load more transforms into the TF buffer
+              auto tf_msg = tf_iter->instantiate<tf2_msgs::TFMessage>();
+              if (tf_msg) {
+                  for (const auto &transform: tf_msg->transforms) {
+                    transformer_->setTransform(transform, "zio", false);
+                    last_tf_time = transform.header.stamp;
+                  }
+                  tf_iter++;
+              }
+          }
+
+          // if horizonInBuffer param is set, calculate base_link to base_link_horizon tf
+          // query the bag imu msgs so that transformer buffers horizon tf up to 2s in the future
+          while (horizonInBuffer && imu_iter != imu_view.end()
+              && last_imu_time < header_time + ros::Duration(2)) {
+
+              auto imu_msg = imu_iter->instantiate<sensor_msgs::Imu>();
+
+              if (imu_msg) {
+
+                // calculate horizon to base tf, and push to tf buffer
+                tf2::Transform imu_tf;
+                tf2::Quaternion q1(imu_msg->orientation.x, imu_msg->orientation.y, imu_msg->orientation.z, imu_msg->orientation.w);
+                imu_tf.setRotation(q1);
+                double roll, pitch, yaw;
+                imu_tf.getBasis().getRPY(roll, pitch, yaw);
+
+                tf2::Quaternion q;
+                q.setRPY(-roll, -pitch, 0.);
+                geometry_msgs::TransformStamped baselink, footprint;
+                baselink.transform.rotation.x = footprint.transform.rotation.x = q.x();
+                baselink.transform.rotation.y = footprint.transform.rotation.y = q.y();
+                baselink.transform.rotation.z = footprint.transform.rotation.z = q.z();
+                baselink.transform.rotation.w = footprint.transform.rotation.w = q.w();
+                baselink.header.stamp = footprint.header.stamp = imu_msg->header.stamp;
+                baselink.header.frame_id = "base_link";
+                footprint.header.frame_id = "base_footprint";
+                baselink.child_frame_id = "base_link_horizon";
+                footprint.child_frame_id = "base_footprint_horizon";
+
+                transformer_->setTransform(baselink, "zio", false);
+                transformer_->setTransform(footprint, "zio", false);
+                // uncomment to broadcast base_link to base_link_horizon tf
+//                tf_broadcaster.sendTransform(baselink);
+
+                last_imu_time = imu_msg->header.stamp;
+                imu_iter++;
+              }
+          }
+        }
+
+
+        // initialise the frame start time
+        if (start_imu_time == ros::Time(0)){
+          start_imu_time = time;
+        }
+
+        ros::Duration time_difference = (time - start_imu_time) - (ros::Time::now() - start_ros_time);
+
+        // hold back the playback to be realtime if limit_playback_speed parameter is set
+        if (limit_playback_speed && time_difference.toSec() > 0) {
+          time_difference.sleep();
+        }
+
+        MessagePublisher(pub_iter->second, m);
+        ros::spinOnce();
+    }else {
       // publish the remaining messages
       //pub_iter->second.publish(m);
       MessagePublisher(pub_iter->second, m);
@@ -493,19 +567,22 @@ h264_bag_playback::ImagePublisher(image_transport::Publisher &publisher, const s
   publisher.publish(message);
 }
 
-
+/**
+ * @brief h264_bag_playback::StaticTfPublisher extract and publish /tf_static and store in member tf buffer transformer_
+ * only reads in the first 10 /tf_static messages and discard all msgs after 10, to prevent a node spaming /tf_static msgs.
+ * @param bag bag that contains static tf
+ * @param do_publish if want to publish /tf_static defaut to true.
+ */
 void h264_bag_playback::StaticTfPublisher(rosbag::Bag &bag, bool do_publish) {
 
   static tf2_ros::StaticTransformBroadcaster static_broadcaster;
-
-  // Build a TF tree
-  std::cout << "Loading static TF tree data" << std::endl;
 
   std::vector<std::string> topics;
 
   topics.push_back(std::string("tf_static"));
   topics.push_back(std::string("/tf_static"));
   rosbag::View view(bag, rosbag::TopicQuery(topics));
+  int n_static_tf = 0;
   for(rosbag::MessageInstance const &m: view) {
     const auto tf = m.instantiate<tf2_msgs::TFMessage>();
     if(do_publish)
@@ -513,7 +590,11 @@ void h264_bag_playback::StaticTfPublisher(rosbag::Bag &bag, bool do_publish) {
     for (const auto &transform: tf->transforms) {
       transformer_->setTransform(transform, "zio", true);
     }
+    n_static_tf++;
+    if(n_static_tf>10)
+        break;
   }
+  ROS_INFO_STREAM("Loaded static TF tree data");
 }
 
 void

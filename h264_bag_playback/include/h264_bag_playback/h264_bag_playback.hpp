@@ -21,6 +21,8 @@
 //#include <tf2_sensor_msgs/tf2_sensor_msgs.h>
 //#include <tf2/buffer_core.h>
 #include <tf2_ros/buffer.h>
+#include <tf2/LinearMath/Transform.h>
+#include <tf2_ros/transform_broadcaster.h>
 
 
 #include "video.hpp"
@@ -93,6 +95,9 @@ protected:
 
   bool camera_time_bias_flag = false;
   ros::Duration camera_time_bias;
+
+  bool horizonInBuffer;
+//  tf2_ros::TransformBroadcaster tf_broadcaster;
 };
 
 }
