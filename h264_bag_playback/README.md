@@ -41,6 +41,11 @@ parameters:
     If the end is missing, it will play through to the end
     If at least one of time_start and time_end parameter pair is specified, percentage_start and percentage_end won't be processed
 
+    <Optional>
+    name="horizon_in_buffer" value in boolean, default to false
+    if horizon_in_buffer set to true, will read in /vn100/imu messages and compute base_link->base_link_horizon and
+    base_footprint->base_footprint_horizon. Buffer up to 2 seconds of horizon tfs in the future
+
     name="limit_playback_speed" value is boolean
     Either playback the bag + images as fast as possible, or restrict to (close to) 
     realtime playback

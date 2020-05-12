@@ -15,13 +15,13 @@ PointCloudFeaturesPipeline::PointCloudFeaturesPipeline() {
 
 
 void
-PointCloudFeaturesPipeline::receive_message(const sensor_msgs::PointCloud2::ConstPtr& input_pc_sensor_msg) {
+PointCloudFeaturesPipeline::receive_message(const sensor_msgs::PointCloud2& input_pc_sensor_msg) {
 
-  ROS_INFO_STREAM("received pointcloud in pipeline " << input_pc_sensor_msg->fields.size());
+  ROS_INFO_STREAM("received pointcloud in pipeline " << input_pc_sensor_msg.fields.size());
 
   // convert sensor_msg PointCloud2 into pcl message
   pcl::PointCloud<pcl::PointXYZIR>::Ptr input_pointcloud_pcl(new pcl::PointCloud<pcl::PointXYZIR>);
-  pcl::fromROSMsg(*input_pc_sensor_msg, *input_pointcloud_pcl);
+  pcl::fromROSMsg(input_pc_sensor_msg, *input_pointcloud_pcl);
 
   ResetMessageFlags();
 
