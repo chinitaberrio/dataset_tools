@@ -33,7 +33,7 @@ deploy:
     - build
   script:
     - cd debs
-    - if [ $CI_PROJECT_NAMESPACE == 'zio' ];
+    - if [ $CI_PROJECT_NAMESPACE == 'its' ];
         then find . -name '*.deb' -print0 | xargs -0 -n1 basename | while read DEB;
         do dpkg-deb -I "$DEB" ;
         curl -f -X POST -F file=@"$DEB" "http://aptly-submit:${APTLY_PASSWORD}@acfr-ros-pro-1.srv.sydney.edu.au:4441/api/files/incoming_pkgs_${ROS_DISTRO}" ;
