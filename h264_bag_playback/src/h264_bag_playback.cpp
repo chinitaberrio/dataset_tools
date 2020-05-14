@@ -457,6 +457,12 @@ void h264_bag_playback::ReadFromBag() {
 
         auto msg = m.instantiate<sensor_msgs::Imu>();
         if (msg) {
+          // compute horizon transforms from imu msg and publish them
+          geometry_msgs::TransformStamped baselink, footprint;
+          imu2horizontf(msg, baselink, footprint);
+          tf_broadcaster.sendTransform(baselink);
+          tf_broadcaster.sendTransform(footprint);
+
           auto header_time = msg->header.stamp;
 
           // query the bag tf msgs so that transformer buffers a tf tree from (current msg time - 8s) to (current msg time + 2s)
@@ -484,30 +490,12 @@ void h264_bag_playback::ReadFromBag() {
 
               if (imu_msg) {
 
-                // calculate horizon to base tf, and push to tf buffer
-                tf2::Transform imu_tf;
-                tf2::Quaternion q1(imu_msg->orientation.x, imu_msg->orientation.y, imu_msg->orientation.z, imu_msg->orientation.w);
-                imu_tf.setRotation(q1);
-                double roll, pitch, yaw;
-                imu_tf.getBasis().getRPY(roll, pitch, yaw);
-
-                tf2::Quaternion q;
-                q.setRPY(-roll, -pitch, 0.);
                 geometry_msgs::TransformStamped baselink, footprint;
-                baselink.transform.rotation.x = footprint.transform.rotation.x = q.x();
-                baselink.transform.rotation.y = footprint.transform.rotation.y = q.y();
-                baselink.transform.rotation.z = footprint.transform.rotation.z = q.z();
-                baselink.transform.rotation.w = footprint.transform.rotation.w = q.w();
-                baselink.header.stamp = footprint.header.stamp = imu_msg->header.stamp;
-                baselink.header.frame_id = "base_link";
-                footprint.header.frame_id = "base_footprint";
-                baselink.child_frame_id = "base_link_horizon";
-                footprint.child_frame_id = "base_footprint_horizon";
+                imu2horizontf(imu_msg, baselink, footprint);
 
                 transformer_->setTransform(baselink, "zio", false);
                 transformer_->setTransform(footprint, "zio", false);
-                // uncomment to broadcast base_link to base_link_horizon tf
-//                tf_broadcaster.sendTransform(baselink);
+
 
                 last_imu_time = imu_msg->header.stamp;
                 imu_iter++;
@@ -548,7 +536,31 @@ void h264_bag_playback::ReadFromBag() {
   bag.close();
 }
 
+void
+h264_bag_playback::imu2horizontf(sensor_msgs::Imu::Ptr &imu_msg, geometry_msgs::TransformStamped &baselink,
+                                 geometry_msgs::TransformStamped &footprint) {
+    if (imu_msg) {
+      // calculate horizon to base tf, and push to tf buffer
+      tf2::Transform imu_tf;
+      tf2::Quaternion q1(imu_msg->orientation.x, imu_msg->orientation.y, imu_msg->orientation.z, imu_msg->orientation.w);
+      imu_tf.setRotation(q1);
+      double roll, pitch, yaw;
+      imu_tf.getBasis().getRPY(roll, pitch, yaw);
 
+      tf2::Quaternion q;
+      q.setRPY(-roll, -pitch, 0.);
+
+      baselink.transform.rotation.x = footprint.transform.rotation.x = q.x();
+      baselink.transform.rotation.y = footprint.transform.rotation.y = q.y();
+      baselink.transform.rotation.z = footprint.transform.rotation.z = q.z();
+      baselink.transform.rotation.w = footprint.transform.rotation.w = q.w();
+      baselink.header.stamp = footprint.header.stamp = imu_msg->header.stamp;
+      baselink.header.frame_id = "base_link";
+      footprint.header.frame_id = "base_footprint";
+      baselink.child_frame_id = "base_link_horizon";
+      footprint.child_frame_id = "base_footprint_horizon";
+    }
+}
 
 void
 h264_bag_playback::CameraInfoPublisher(ros::Publisher &publisher, const sensor_msgs::CameraInfoConstPtr &message) {

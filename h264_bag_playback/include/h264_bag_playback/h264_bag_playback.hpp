@@ -87,6 +87,9 @@ protected:
 
   virtual void StaticTfPublisher(rosbag::Bag &bag, bool do_publish=true);
 
+  void imu2horizontf(sensor_msgs::Imu::Ptr &imu_msg, geometry_msgs::TransformStamped &baselink,
+                                   geometry_msgs::TransformStamped &footprint);
+
   image_transport::ImageTransport image_transport;
 
   // parameters for selecting part of the dataset
@@ -97,7 +100,7 @@ protected:
   ros::Duration camera_time_bias;
 
   bool horizonInBuffer;
-//  tf2_ros::TransformBroadcaster tf_broadcaster;
+  tf2_ros::TransformBroadcaster tf_broadcaster;
 };
 
 }
