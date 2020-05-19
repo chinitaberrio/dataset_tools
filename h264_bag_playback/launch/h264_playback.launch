@@ -7,6 +7,8 @@
     <param name="limit_playback_speed" value="true" />
     <param name="bag_file" value="$(arg bag_file_name)"/>
     <param name="horizon_in_buffer" value="true" />
+    <param name="percentage_start" value="0" />
+    <param name="percentage_end" value="10" />
 
     <!-- Optional playback start and end time in ISO format.
          If the start is missing, it will play from the beginning

@@ -37,6 +37,7 @@ int main(int argc, char **argv) {
 
   dataset_toolkit::h264_bag_playback bag_tools;
   //bag_tools.bypass_init();
+  bag_tools.init_playback();
   bag_tools.ReadFromBag();
 
   return 0;
@@ -54,7 +55,6 @@ h264_bag_playback::h264_bag_playback() :
         image_transport(public_nh),
         playback_start(ros::TIME_MIN),
         playback_end(ros::TIME_MAX){
-  //transformer_ = std::make_shared<tf2::BufferCore>();
 }
 
 
@@ -93,57 +93,165 @@ h264_bag_playback::ScaleCameraInfoMsg(int original_width,
   scaled_info_msg->P[6] = scaled_info_msg->P[6] * scale_y;  // cy
 }
 
+void h264_bag_playback::init_playback() {
+
+    // parameter to scale the size of the images from the h264 playback
+    scaled_width = 0;
+    scaled_height = 0;
+    private_nh.param("output_width", scaled_width, 0);
+    private_nh.param("output_height", scaled_height, 0);
+
+    if (scaled_height && scaled_width) {
+      ROS_INFO_STREAM("output images will be scaled to " << scaled_width << "x" << scaled_height);
+    }
+    else {
+      ROS_INFO_STREAM("output images will NOT be scaled");
+    }
+
+    // parameter to limit the speed of playback to realtime
+
+    private_nh.param("limit_playback_speed", limit_playback_speed, true);
+
+    // determine the bag file to playback
+    private_nh.getParam("bag_file", bag_file_name);
+
+    if (bag_file_name.empty()) {
+      ROS_INFO_STREAM("Could not find bagfile " << bag_file_name);
+      return;
+    }
+
+    // Attempt to open the bag file
+    rosbag::Bag bag;
+    bag.open(bag_file_name);
+
+    if (!bag.isOpen()) {
+      ROS_INFO_STREAM("Could not OPEN bagfile " << bag_file_name);
+      return;
+    }
+
+    // determine the file prefixes and initialise each camera
+    std::string file_prefix = remove_last_of_string(bag_file_name, ".");
+    std::string dataset_name = keep_last_of_string(file_prefix, "/");
+    ROS_INFO_STREAM("Reading from bag: " << bag_file_name << " dataset name " << dataset_name);
+
+    std::vector<std::string> file_list;
+    get_files_pattern(file_prefix + "*.h264", file_list);
+
+    // make a video object for each video file
+    for (auto file_name: file_list) {
+      std::string camera_name = keep_last_of_string(remove_last_of_string(file_name, "."), "-");
+
+      Video new_video;
+      videos[camera_name] = new_video;
+      if (videos[camera_name].InitialiseVideo(camera_name, file_name)){
+        ROS_INFO_STREAM("including video file: " << file_name << " for camera " << camera_name);
+      }
+      else {
+        ROS_INFO_STREAM("FAIL to open video file: " << file_name << " for camera " << camera_name);
+        return;
+      }
+    }
+
+    // determine whether to apply a time bias correction
+    // (some datasets have an offset between the nvidia computer time and the ROS time)
+    std::map<std::string, double> dataset_time_correction;
+    private_nh.getParam("dataset_time_correction", dataset_time_correction);
+
+    ros::Duration time_offset(0.0);
+    time_offset_ = time_offset;
+    if (dataset_time_correction.count(dataset_name)) {
+      time_offset_ = ros::Duration(dataset_time_correction.at(dataset_name));
+      ROS_INFO_STREAM("Time correction of " << time_offset_.toSec() << " is being applied");
+    }
+    else {
+      ROS_INFO_STREAM("No time correction parameters available for this dataset");
+    }
+
+    rosbag::View overall_view(bag);
+
+    ros::Time bag_start_time = overall_view.getBeginTime();
+    ros::Time bag_end_time = overall_view.getEndTime();
+    auto bag_duration = (bag_end_time-bag_start_time).toSec();
+
+
+    ROS_INFO_STREAM("Bag start time " << boost::posix_time::to_iso_extended_string(bag_start_time.toBoost()));
+    ROS_INFO_STREAM("Bag end time " << boost::posix_time::to_iso_extended_string(bag_end_time.toBoost()));
+    ROS_INFO_STREAM("Bag duration: " << bag_duration << " seconds");
+
+
+    std::string start_time_param_string, end_time_param_string;
+    float start_percentage, end_percentage;
+    private_nh.getParam("time_start", start_time_param_string);
+    private_nh.getParam("time_end", end_time_param_string);
+    private_nh.param<float>("percentage_start", start_percentage, 0); // -1.1 is a random placeholder value to denote no param received
+    private_nh.param<float>("percentage_end", end_percentage, 100);
+
+    ROS_INFO_STREAM("Requested start percentage " << start_percentage );
+    ROS_INFO_STREAM("Requested end percentage " << end_percentage );
+
+    requested_start_time = bag_start_time;
+    requested_end_time = bag_end_time;
+
+    try {
+      ros::Time test_start_time = ros::Time::fromBoost(boost::posix_time::from_iso_extended_string(start_time_param_string));
+      requested_start_time = test_start_time;
+      ROS_INFO_STREAM("Requested start time " << start_time_param_string << " is " << requested_start_time);
+    }
+    catch (...) {
+      ROS_INFO_STREAM("Couldn't read start time string " << start_time_param_string);
+    }
+
+    try {
+      ros::Time test_end_time = ros::Time::fromBoost(boost::posix_time::from_iso_extended_string(end_time_param_string));
+      requested_end_time = test_end_time;
+      ROS_INFO_STREAM("Requested end time " << end_time_param_string << " is " << requested_end_time);
+    }
+    catch (...) {
+      ROS_INFO_STREAM("Couldn't read end time string " << end_time_param_string);
+    }
+
+    if(requested_start_time == bag_start_time && requested_end_time == bag_end_time){
+        if(!(start_percentage>=0 && start_percentage<100)){
+            start_percentage = 0;
+        }
+        if(!(end_percentage<=100 && end_percentage>0)){
+            end_percentage = 100;
+        }
+        auto duration_percentage = end_percentage - start_percentage;
+        if(duration_percentage<100 && duration_percentage>0){
+            ROS_INFO_STREAM("Reading bag from " << start_percentage << "% to " << end_percentage << "%");
+
+            requested_start_time = bag_start_time + ros::Duration(bag_duration / 100 * start_percentage);
+            requested_end_time = bag_start_time + ros::Duration(bag_duration / 100 * end_percentage);
+        }
+    }
+
+
+    if(requested_start_time == bag_start_time){
+      ROS_INFO_STREAM("starting from the beginning: " << start_time_param_string);
+    }else{
+      ROS_INFO_STREAM("Playback start from : " << boost::posix_time::to_iso_extended_string(requested_start_time.toBoost()));
+    }
+    if(requested_end_time == bag_end_time){
+      ROS_INFO_STREAM("running through to the end of the bag: " << end_time_param_string);
+    }else{
+      ROS_INFO_STREAM("Play until : " << boost::posix_time::to_iso_extended_string(requested_end_time.toBoost()));
+    }
+    ROS_INFO_STREAM("Playback duration : " << requested_end_time-requested_start_time << " seconds");
+
+
+    // tf static should be published by static tf broadcaster
+    // so that if bag isn't played from begining, static will still be published
+    StaticTfPublisher(bag);
+
+    private_nh.param<bool>("horizon_in_buffer", horizonInBuffer, false);
+
+
+
+}
 
 
 void h264_bag_playback::ReadFromBag() {
-
-  // parameter to scale the size of the images from the h264 playback
-  int scaled_width = 0, scaled_height = 0;
-  private_nh.param("output_width", scaled_width, 0);
-  private_nh.param("output_height", scaled_height, 0);
-
-  if (scaled_height && scaled_width) {
-    ROS_INFO_STREAM("output images will be scaled to " << scaled_width << "x" << scaled_height);
-  }
-  else {
-    ROS_INFO_STREAM("output images will NOT be scaled");
-  }
-
-  // parameter to limit the speed of playback to realtime
-  bool limit_playback_speed;
-  private_nh.param("limit_playback_speed", limit_playback_speed, true);
-
-  // determine the bag file to playback
-  std::string bag_file_name = "";
-  private_nh.getParam("bag_file", bag_file_name);
-
-  if (bag_file_name.empty()) {
-    ROS_INFO_STREAM("Could not find bagfile " << bag_file_name);
-    return;
-  }
-
-  // determine the file prefixes and initialise each camera
-  std::string file_prefix = remove_last_of_string(bag_file_name, ".");
-  std::string dataset_name = keep_last_of_string(file_prefix, "/");
-  ROS_INFO_STREAM("Reading from bag: " << bag_file_name << " dataset name " << dataset_name);
-
-  std::vector<std::string> file_list;
-  get_files_pattern(file_prefix + "*.h264", file_list);
-
-  // make a video object for each video file
-  for (auto file_name: file_list) {
-    std::string camera_name = keep_last_of_string(remove_last_of_string(file_name, "."), "-");
-
-    Video new_video;
-    videos[camera_name] = new_video;
-    if (videos[camera_name].InitialiseVideo(camera_name, file_name)){
-      ROS_INFO_STREAM("including video file: " << file_name << " for camera " << camera_name);
-    }
-    else {
-      ROS_INFO_STREAM("FAIL to open video file: " << file_name << " for camera " << camera_name);
-      return;
-    }
-  }
 
   // Attempt to open the bag file
   rosbag::Bag bag;
@@ -154,124 +262,34 @@ void h264_bag_playback::ReadFromBag() {
     return;
   }
 
-  // determine whether to apply a time bias correction
-  // (some datasets have an offset between the nvidia computer time and the ROS time)
-  std::map<std::string, double> dataset_time_correction;
-  private_nh.getParam("dataset_time_correction", dataset_time_correction);
-
-  ros::Duration time_offset(0.0);
-  if (dataset_time_correction.count(dataset_name)) {
-    time_offset = ros::Duration(dataset_time_correction.at(dataset_name));
-    ROS_INFO_STREAM("Time correction of " << time_offset.toSec() << " is being applied");
-  }
-  else {
-    ROS_INFO_STREAM("No time correction parameters available for this dataset");
-  }
-
-  rosbag::View overall_view(bag);
-
-  ros::Time bag_start_time = overall_view.getBeginTime();
-  ros::Time bag_end_time = overall_view.getEndTime();
-  auto bag_duration = (bag_end_time-bag_start_time).toSec();
-
-
-  ROS_INFO_STREAM("Bag start time " << boost::posix_time::to_iso_extended_string(bag_start_time.toBoost()));
-  ROS_INFO_STREAM("Bag end time " << boost::posix_time::to_iso_extended_string(bag_end_time.toBoost()));
-  ROS_INFO_STREAM("Bag duration: " << bag_duration << " seconds");
-
-
-  std::string start_time_param_string, end_time_param_string;
-  float start_percentage, end_percentage;
-  private_nh.getParam("time_start", start_time_param_string);
-  private_nh.getParam("time_end", end_time_param_string);
-  private_nh.param<float>("percentage_start", start_percentage, 0); // -1.1 is a random placeholder value to denote no param received
-  private_nh.param<float>("percentage_end", end_percentage, 100);
-
-  ROS_INFO_STREAM("Requested start percentage " << start_percentage );
-  ROS_INFO_STREAM("Requested end percentage " << end_percentage );
-
-  ros::Time requested_start_time = bag_start_time;
-  ros::Time requested_end_time = bag_end_time;
-
-  try {
-    ros::Time test_start_time = ros::Time::fromBoost(boost::posix_time::from_iso_extended_string(start_time_param_string));
-    requested_start_time = test_start_time;
-    ROS_INFO_STREAM("Requested start time " << start_time_param_string << " is " << requested_start_time);
-  }
-  catch (...) {
-    ROS_INFO_STREAM("Couldn't read start time string " << start_time_param_string);
-  }
-
-  try {
-    ros::Time test_end_time = ros::Time::fromBoost(boost::posix_time::from_iso_extended_string(end_time_param_string));
-    requested_end_time = test_end_time;
-    ROS_INFO_STREAM("Requested end time " << end_time_param_string << " is " << requested_end_time);
-  }
-  catch (...) {
-    ROS_INFO_STREAM("Couldn't read end time string " << end_time_param_string);
-  }
-
-  if(requested_start_time == bag_start_time && requested_end_time == bag_end_time){
-      if(!(start_percentage>=0 && start_percentage<100)){
-          start_percentage = 0;
-      }
-      if(!(end_percentage<=100 && end_percentage>0)){
-          end_percentage = 100;
-      }
-      auto duration_percentage = end_percentage - start_percentage;
-      if(duration_percentage<100 && duration_percentage>0){
-          ROS_INFO_STREAM("Reading bag from " << start_percentage << "% to " << end_percentage << "%");
-
-          requested_start_time = bag_start_time + ros::Duration(bag_duration / 100 * start_percentage);
-          requested_end_time = bag_start_time + ros::Duration(bag_duration / 100 * end_percentage);
-      }
-  }
-
-
-  if(requested_start_time == bag_start_time){
-    ROS_INFO_STREAM("starting from the beginning: " << start_time_param_string);
-  }else{
-    ROS_INFO_STREAM("Playback start from : " << boost::posix_time::to_iso_extended_string(requested_start_time.toBoost()));
-  }
-  if(requested_end_time == bag_end_time){
-    ROS_INFO_STREAM("running through to the end of the bag: " << end_time_param_string);
-  }else{
-    ROS_INFO_STREAM("Play until : " << boost::posix_time::to_iso_extended_string(requested_end_time.toBoost()));
-  }
-  ROS_INFO_STREAM("Playback duration : " << requested_end_time-requested_start_time << " seconds");
-
   // create a view and advertise each of the topics to publish
   rosbag::View view(bag, requested_start_time, requested_end_time);
   AdvertiseTopics(view);
+
+  // creat a tf bag view object so that we can view future tf msgs
+  std::vector<std::string> tf_topics{"tf", "/tf"};
+  std::vector<std::string> imu_topics{"vn100/imu", "/vn100/imu"};
+  rosbag::View tf_view(bag, rosbag::TopicQuery(tf_topics), requested_start_time, requested_end_time);
+  rosbag::View imu_view(bag, rosbag::TopicQuery(imu_topics), requested_start_time, requested_end_time);
+
+  rosbag::View::iterator tf_iter = tf_view.begin();
+  ros::Time last_tf_time(0.01);
+
+  rosbag::View::iterator imu_iter = imu_view.begin();
+  ros::Time last_imu_time(0.01);
 
   ros::Time start_ros_time = ros::Time::now();
   ros::Time start_imu_time = ros::Time(0);
   ros::Time start_frame_time = ros::Time(0);
 
-  // tf static should be published by static tf broadcaster
-  // so that if bag isn't played from begining, static will still be published
-  StaticTfPublisher(bag);
-
-
-  private_nh.param<bool>("horizon_in_buffer", horizonInBuffer, false);
-
-  // creat a tf bag view object so that we can view future tf msgs
-  std::vector<std::string> tf_topics{"tf", "/tf"};
-  rosbag::View tf_view(bag, rosbag::TopicQuery(tf_topics), requested_start_time, requested_end_time);
-  rosbag::View::iterator tf_iter = tf_view.begin();
-  ros::Time last_tf_time(0.1);
-
-  std::vector<std::string> imu_topics{"vn100/imu", "/vn100/imu"};
-  rosbag::View imu_view(bag, rosbag::TopicQuery(imu_topics), requested_start_time, requested_end_time);
-  rosbag::View::iterator imu_iter = imu_view.begin();
-  ros::Time last_imu_time(0.01);
-
-
   // for each message in the rosbag
   for(rosbag::MessageInstance const m: view)
   {
+
     std::string const& topic = m.getTopic();
+
     ros::Time const& time = m.getTime();
+
 
     if (topic == "/tf_static" || topic == "tf_static") {
       // static transforms are handled separately
@@ -286,6 +304,7 @@ void h264_bag_playback::ReadFromBag() {
 // MOVE THIS INTO THE BAG VIEW OBJECT
 //    if (time < playback_start || time > playback_end)
 //      continue;
+
 
     // For each camera info msg, check whether we have stored the calibration parameters for this camera
     if (keep_last_of_string(topic, "/") == "camera_info") {
@@ -349,10 +368,10 @@ void h264_bag_playback::ReadFromBag() {
         ros::Time adjusted_image_stamp;
 
         if (fabs(camera_time_bias.toSec()) > 0.5) {
-          adjusted_image_stamp = nvidia_timestamp + camera_time_bias - time_offset;
+          adjusted_image_stamp = nvidia_timestamp + camera_time_bias - time_offset_;
         }
         else {
-          adjusted_image_stamp = nvidia_timestamp - time_offset;
+          adjusted_image_stamp = nvidia_timestamp - time_offset_;
         }
 
         // Check that someone has subscribed to this camera'frame_info_msg images
@@ -454,6 +473,8 @@ void h264_bag_playback::ReadFromBag() {
       ros::spinOnce();
     }
     else if (topic == "vn100/imu" || topic == "/vn100/imu") {
+
+
 
         auto msg = m.instantiate<sensor_msgs::Imu>();
         if (msg) {
