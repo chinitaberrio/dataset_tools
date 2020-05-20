@@ -54,6 +54,7 @@
     // clear params
     playback.private_nh.setParam("time_start", "");
     playback.private_nh.setParam("time_end", "");
+    playback.init_playback();
     playback.ReadFromBag();
 
     for(auto elem : playback.stats){
@@ -72,6 +73,7 @@
     DirectPlayback playback(bag_file_name);
     playback.private_nh.setParam("time_start", "2018-02-18T22:42:40.30");
     playback.private_nh.setParam("time_end", "2018-02-18T22:42:43.0");
+    playback.init_playback();
     playback.ReadFromBag();
 
     // checked from test file using rosbag info
@@ -87,6 +89,7 @@
   DirectPlayback playback(bag_file_name);
   playback.private_nh.setParam("time_start", "2018-02-18T22:42:41.30");
   playback.private_nh.setParam("time_end", "");
+  playback.init_playback();
   playback.ReadFromBag();
 
   // checked from test file using rqt_bag
@@ -102,6 +105,7 @@
   DirectPlayback playback(bag_file_name);
   playback.private_nh.setParam("time_start", "");
   playback.private_nh.setParam("time_end", "2018-02-18T22:42:41.30");
+  playback.init_playback();
   playback.ReadFromBag();
 
   // checked from test file using rqt_bag
@@ -119,6 +123,7 @@
   playback.private_nh.setParam("time_end", "");
   playback.private_nh.setParam("percentage_start", 99.8);
   playback.private_nh.setParam("percentage_end", -0.1);
+  playback.init_playback();
   playback.ReadFromBag();
 
   for(auto elem : playback.stats){
@@ -140,6 +145,7 @@
   playback.private_nh.setParam("time_end", "");
   playback.private_nh.setParam("percentage_start", NAN);
   playback.private_nh.setParam("percentage_end", 0.1);
+  playback.init_playback();
   playback.ReadFromBag();
 
   for(auto elem : playback.stats){
@@ -162,6 +168,7 @@
   playback.private_nh.setParam("time_end", "");
   playback.private_nh.setParam("percentage_start", 0.1);
   playback.private_nh.setParam("percentage_end", 0.2);
+  playback.init_playback();
   playback.ReadFromBag();
 
   for(auto elem : playback.stats){

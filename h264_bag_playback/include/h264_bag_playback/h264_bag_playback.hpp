@@ -35,7 +35,7 @@ class h264_bag_playback : public nodelet::Nodelet
 {
 public:
   h264_bag_playback();
-
+  void init_playback();
   void bypass_init() {
     this->onInit();
   }
@@ -91,6 +91,15 @@ protected:
                                    geometry_msgs::TransformStamped &footprint);
 
   image_transport::ImageTransport image_transport;
+
+  std::string bag_file_name;
+  int scaled_width;
+  int scaled_height;
+  bool limit_playback_speed;
+  ros::Duration time_offset_;
+
+  ros::Time requested_start_time;
+  ros::Time requested_end_time;
 
   // parameters for selecting part of the dataset
   ros::Time playback_start, playback_end;
