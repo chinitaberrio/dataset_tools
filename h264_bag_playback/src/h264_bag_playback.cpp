@@ -618,16 +618,49 @@ void h264_bag_playback::StaticTfPublisher(rosbag::Bag &bag, bool do_publish) {
   int n_static_tf = 0;
   for(rosbag::MessageInstance const &m: view) {
     const auto tf = m.instantiate<tf2_msgs::TFMessage>();
-    if(do_publish)
+    if (do_publish) {
       static_broadcaster.sendTransform(tf->transforms);
+
+    }
     for (const auto &transform: tf->transforms) {
       transformer_->setTransform(transform, "zio", true);
     }
     n_static_tf++;
     if(n_static_tf>10)
         break;
+
   }
-  ROS_INFO_STREAM("Loaded static TF tree data");
+  // replace the static transform to the velodyne for testing
+  tf2_msgs::TFMessage replace_transform;
+
+    geometry_msgs::TransformStamped transformStamped;
+    transformStamped.header.stamp = ros::Time::now();
+    transformStamped.header.frame_id = "base_link" ;
+    transformStamped.child_frame_id = "velodyne_front_link";
+
+    transformStamped.transform.translation.x = 1.2;
+    transformStamped.transform.translation.y = 0;
+    transformStamped.transform.translation.z = 1.37;
+
+
+    float new_roll, new_pitch, new_yaw;
+    private_nh.param<float>("new_roll", new_roll, 0.);
+    private_nh.param<float>("new_pitch", new_pitch, 0.061);
+    private_nh.param<float>("new_yaw", new_yaw, 0.);
+
+    tf2::Quaternion quat;
+    quat.setEuler(new_roll, new_pitch, new_yaw);
+    //quat.setEuler(-0.02, 0.1335, -0.05);
+
+    transformStamped.transform.rotation.x = quat.x();
+    transformStamped.transform.rotation.y = quat.y();
+    transformStamped.transform.rotation.z = quat.z();
+    transformStamped.transform.rotation.w = quat.w();
+
+    static_broadcaster.sendTransform(transformStamped);
+
+
+    ROS_INFO_STREAM("Loaded static TF tree data");
 }
 
 void
