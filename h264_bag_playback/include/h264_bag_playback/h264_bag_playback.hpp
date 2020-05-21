@@ -31,6 +31,43 @@
 namespace dataset_toolkit
 {
 
+
+
+  class BagContainer {
+  public:
+
+    ~BagContainer() {
+      bag.close();
+    }
+
+    bool Open(std::string file_name) {
+
+      bag_file_name = file_name;
+
+      bag.open(file_name);
+
+      if (!bag.isOpen()) {
+        ROS_INFO_STREAM("Could not OPEN bagfile " << file_name);
+        return false;
+      }
+
+      rosbag::View view(bag);
+      for(const rosbag::ConnectionInfo* info: view.getConnections()) {
+        topics.insert(info->topic);
+      }
+      return true;
+    }
+
+    rosbag::Bag bag;
+    rosbag::View view;
+    rosbag::View::iterator iter;
+    std::string bag_file_name;
+    std::set<std::string> topics;
+  };
+
+
+
+
 class h264_bag_playback : public nodelet::Nodelet
 {
 public:
@@ -97,6 +134,9 @@ protected:
   int scaled_height;
   bool limit_playback_speed;
   ros::Duration time_offset_;
+
+//  std::list<std::shared_ptr<rosbag::Bag>> bags;
+  std::list<std::shared_ptr<BagContainer>> bags;
 
   ros::Time requested_start_time;
   ros::Time requested_end_time;

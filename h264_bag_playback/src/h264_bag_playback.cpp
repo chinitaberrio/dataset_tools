@@ -93,6 +93,8 @@ h264_bag_playback::ScaleCameraInfoMsg(int original_width,
   scaled_info_msg->P[6] = scaled_info_msg->P[6] * scale_y;  // cy
 }
 
+
+
 void h264_bag_playback::init_playback() {
 
     // parameter to scale the size of the images from the h264 playback
@@ -120,6 +122,7 @@ void h264_bag_playback::init_playback() {
       return;
     }
 
+    /*
     // Attempt to open the bag file
     rosbag::Bag bag;
     bag.open(bag_file_name);
@@ -128,8 +131,15 @@ void h264_bag_playback::init_playback() {
       ROS_INFO_STREAM("Could not OPEN bagfile " << bag_file_name);
       return;
     }
+     */
 
-    // determine the file prefixes and initialise each camera
+    // Attempt to open the bag file
+    bags.push_back(std::make_shared<BagContainer>());
+    if (!bags.back()->Open(bag_file_name))
+      return;
+
+
+  // determine the file prefixes and initialise each camera
     std::string file_prefix = remove_last_of_string(bag_file_name, ".");
     std::string dataset_name = keep_last_of_string(file_prefix, "/");
     ROS_INFO_STREAM("Reading from bag: " << bag_file_name << " dataset name " << dataset_name);
@@ -137,7 +147,32 @@ void h264_bag_playback::init_playback() {
     std::vector<std::string> file_list;
     get_files_pattern(file_prefix + "*.h264", file_list);
 
-    // make a video object for each video file
+    std::vector<std::string> extensions_list;
+    get_files_pattern(file_prefix + ".*.bag", extensions_list);
+    for (auto extension_name: extensions_list) {
+      std::cout << "EXTENSIONS " << extension_name << std::endl;
+      auto new_bag = std::make_shared<BagContainer>();
+      bags.push_back(new_bag);
+      if (!new_bag->Open(extension_name))
+        return;
+
+      // for all the other bags, if there is a topic with the same name, delete it from the list
+      //  the last opened bags have priority
+
+      for (auto bag: bags) {
+        // if it is not this bag
+        if (bag != new_bag) {
+          for (auto topic_name: new_bag->topics){
+            if (bag->topics.find(topic_name) != bag->topics.end()) {
+              bag->topics.erase(topic_name);
+              ROS_INFO_STREAM ("replacing " << topic_name << " from bag " << bag->bag_file_name << " as it exists in bag " << new_bag->bag_file_name);
+            }
+          }
+        }
+      }
+    }
+
+  // make a video object for each video file
     for (auto file_name: file_list) {
       std::string camera_name = keep_last_of_string(remove_last_of_string(file_name, "."), "-");
 
@@ -167,7 +202,8 @@ void h264_bag_playback::init_playback() {
       ROS_INFO_STREAM("No time correction parameters available for this dataset");
     }
 
-    rosbag::View overall_view(bag);
+    // assume the "main" bag covers the most important times
+    rosbag::View overall_view(bags.front()->bag);
 
     ros::Time bag_start_time = overall_view.getBeginTime();
     ros::Time bag_end_time = overall_view.getEndTime();
@@ -242,7 +278,10 @@ void h264_bag_playback::init_playback() {
 
     // tf static should be published by static tf broadcaster
     // so that if bag isn't played from begining, static will still be published
-    StaticTfPublisher(bag);
+    for (auto bag: bags) {
+      StaticTfPublisher(bag->bag);
+    }
+    //StaticTfPublisher(bags.front()->bag);
 
     private_nh.param<bool>("horizon_in_buffer", horizonInBuffer, false);
 
@@ -253,24 +292,21 @@ void h264_bag_playback::init_playback() {
 
 void h264_bag_playback::ReadFromBag() {
 
-  // Attempt to open the bag file
-  rosbag::Bag bag;
-  bag.open(bag_file_name);
-
-  if (!bag.isOpen()) {
-    ROS_INFO_STREAM("Could not OPEN bagfile " << bag_file_name);
-    return;
-  }
 
   // create a view and advertise each of the topics to publish
-  rosbag::View view(bag, requested_start_time, requested_end_time);
+  rosbag::View view(bags.front()->bag, requested_start_time, requested_end_time);
   AdvertiseTopics(view);
 
   // creat a tf bag view object so that we can view future tf msgs
   std::vector<std::string> tf_topics{"tf", "/tf"};
   std::vector<std::string> imu_topics{"vn100/imu", "/vn100/imu"};
-  rosbag::View tf_view(bag, rosbag::TopicQuery(tf_topics), requested_start_time, requested_end_time);
-  rosbag::View imu_view(bag, rosbag::TopicQuery(imu_topics), requested_start_time, requested_end_time);
+
+  rosbag::View tf_view;
+  for (auto bag: bags) {
+    if ()
+    rosbag::View tf_view(bags.front()->bag, rosbag::TopicQuery(tf_topics), requested_start_time, requested_end_time);
+  }
+  rosbag::View imu_view(bags.front()->bag, rosbag::TopicQuery(imu_topics), requested_start_time, requested_end_time);
 
   rosbag::View::iterator tf_iter = tf_view.begin();
   ros::Time last_tf_time(0.01);
@@ -281,6 +317,14 @@ void h264_bag_playback::ReadFromBag() {
   ros::Time start_ros_time = ros::Time::now();
   ros::Time start_imu_time = ros::Time(0);
   ros::Time start_frame_time = ros::Time(0);
+
+  // restrict the topics for lower priority
+  //fill publishers from all
+  // make iters list
+  //find soonest iter
+  // use
+  // test for end (remove finished iters from list?
+  //close all
 
   // for each message in the rosbag
   for(rosbag::MessageInstance const m: view)
@@ -554,7 +598,7 @@ void h264_bag_playback::ReadFromBag() {
   }
 
   ROS_INFO_STREAM("completed playback");
-  bag.close();
+  //bags.back()->close();
 }
 
 void
@@ -620,16 +664,19 @@ void h264_bag_playback::StaticTfPublisher(rosbag::Bag &bag, bool do_publish) {
     const auto tf = m.instantiate<tf2_msgs::TFMessage>();
     if (do_publish) {
       static_broadcaster.sendTransform(tf->transforms);
-
     }
+
     for (const auto &transform: tf->transforms) {
       transformer_->setTransform(transform, "zio", true);
     }
-    n_static_tf++;
-    if(n_static_tf>10)
-        break;
 
+    n_static_tf++;
+
+    if (n_static_tf > 10)
+        break;
   }
+
+  ROS_INFO_STREAM("REPLACING THE velodyne_front_link TRANSFORM FOR TESTING");
   // replace the static transform to the velodyne for testing
   tf2_msgs::TFMessage replace_transform;
 

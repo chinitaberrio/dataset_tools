@@ -7,8 +7,10 @@
     <param name="limit_playback_speed" value="true" />
     <param name="bag_file" value="$(arg bag_file_name)"/>
     <param name="horizon_in_buffer" value="true" />
-    <param name="percentage_start" value="69" />
-    <param name="percentage_end" value="72" />
+    <param name="percentage_start" value="0" />
+    <param name="percentage_end" value="100" />
+
+
 
   <param name="new_roll" value="0.0" />
   <param name="new_pitch" value="0.067" />
