@@ -32,7 +32,6 @@ namespace dataset_toolkit
 {
 
 
-
   class BagContainer {
   public:
 
@@ -51,15 +50,15 @@ namespace dataset_toolkit
         return false;
       }
 
-      rosbag::View view(bag);
-      for(const rosbag::ConnectionInfo* info: view.getConnections()) {
+      rosbag::View connections_view(bag);
+      for(const rosbag::ConnectionInfo* info: connections_view.getConnections()) {
         topics.insert(info->topic);
       }
       return true;
     }
 
     rosbag::Bag bag;
-    rosbag::View view;
+    std::shared_ptr<rosbag::View> view;
     rosbag::View::iterator iter;
     std::string bag_file_name;
     std::set<std::string> topics;
@@ -94,7 +93,7 @@ protected:
 
 //  void BagReader(std::string file_name);
 
-  void AdvertiseTopics(rosbag::View &view);
+  void AdvertiseTopics(std::shared_ptr<rosbag::View> view);
 
   // scale the camera info message for a different output size
   void ScaleCameraInfoMsg(int original_width,

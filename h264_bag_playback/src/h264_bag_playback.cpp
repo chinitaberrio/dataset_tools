@@ -293,25 +293,49 @@ void h264_bag_playback::init_playback() {
 void h264_bag_playback::ReadFromBag() {
 
 
+  // generate the views
+  for (auto bag: bags) {
+    bag->view = std::make_shared<rosbag::View>(bag->bag, rosbag::TopicQuery(std::vector<std::string>(bag->topics.begin(), bag->topics.end())), requested_start_time, requested_end_time);
+    bag->iter = bag->view->begin();
+    AdvertiseTopics(bag->view);
+  }
+
   // create a view and advertise each of the topics to publish
-  rosbag::View view(bags.front()->bag, requested_start_time, requested_end_time);
-  AdvertiseTopics(view);
+  //rosbag::View view(bags.front()->bag, requested_start_time, requested_end_time);
+  //AdvertiseTopics(view);
 
   // creat a tf bag view object so that we can view future tf msgs
   std::vector<std::string> tf_topics{"tf", "/tf"};
   std::vector<std::string> imu_topics{"vn100/imu", "/vn100/imu"};
 
-  rosbag::View tf_view;
+  std::shared_ptr<rosbag::View> tf_view, imu_view;
   for (auto bag: bags) {
-    if ()
-    rosbag::View tf_view(bags.front()->bag, rosbag::TopicQuery(tf_topics), requested_start_time, requested_end_time);
+    for (auto tf_topic: tf_topics) {
+      if (bag->topics.find(tf_topic) != bag->topics.end()) {
+        ROS_INFO_STREAM("starting TF view from bag " << bag->bag_file_name);
+        tf_view = std::make_shared<rosbag::View>(bags.front()->bag, rosbag::TopicQuery(tf_topics), requested_start_time, requested_end_time);
+      }
+    }
+    for (auto imu_topic: imu_topics) {
+      if (bag->topics.find(imu_topic) != bag->topics.end()) {
+        ROS_INFO_STREAM("starting IMU view from bag " << bag->bag_file_name);
+        imu_view = std::make_shared<rosbag::View>(bags.front()->bag, rosbag::TopicQuery(imu_topics), requested_start_time, requested_end_time);
+      }
+    }
   }
-  rosbag::View imu_view(bags.front()->bag, rosbag::TopicQuery(imu_topics), requested_start_time, requested_end_time);
 
-  rosbag::View::iterator tf_iter = tf_view.begin();
+  rosbag::View::iterator tf_iter, imu_iter;
+
+  if (tf_view) {
+    tf_iter = tf_view->begin();
+  }
+
   ros::Time last_tf_time(0.01);
 
-  rosbag::View::iterator imu_iter = imu_view.begin();
+  if (imu_view) {
+    imu_iter = imu_view->begin();
+  }
+
   ros::Time last_imu_time(0.01);
 
   ros::Time start_ros_time = ros::Time::now();
@@ -327,12 +351,36 @@ void h264_bag_playback::ReadFromBag() {
   //close all
 
   // for each message in the rosbag
-  for(rosbag::MessageInstance const m: view)
+//  for(rosbag::MessageInstance const m: view)
+
+  while (true)
   {
+    // find the next in time order
+    ros::Time earliest_time = ros::TIME_MAX;
+    std::shared_ptr<BagContainer> earliest_iter;
+    bool valid_iter = false;
+
+    for (auto bag: bags) {
+      if (bag->iter == bag->view->end())
+        continue;
+      if (bag->iter->getTime() < earliest_time) {
+        earliest_iter = bag;
+        earliest_time = bag->iter->getTime();
+        valid_iter = true;
+      }
+    }
+
+    if (!valid_iter)
+      break;
+
+    rosbag::MessageInstance const m = *(earliest_iter->iter);
+    earliest_iter->iter++;
 
     std::string const& topic = m.getTopic();
 
     ros::Time const& time = m.getTime();
+
+    //std::cout << "topic " << topic << std::endl;
 
 
     if (topic == "/tf_static" || topic == "tf_static") {
@@ -532,24 +580,27 @@ void h264_bag_playback::ReadFromBag() {
 
           // query the bag tf msgs so that transformer buffers a tf tree from (current msg time - 8s) to (current msg time + 2s)
           // this however does not affect replay publishing of tf msgs. Tf msgs are still published at their bag times
-          while (tf_iter != tf_view.end()
-              && last_tf_time < header_time + ros::Duration(2)) {
+          if (tf_view) {
+            while (tf_iter != tf_view->end()
+                && last_tf_time < header_time + ros::Duration(2)) {
 
               // Load more transforms into the TF buffer
               auto tf_msg = tf_iter->instantiate<tf2_msgs::TFMessage>();
               if (tf_msg) {
-                  for (const auto &transform: tf_msg->transforms) {
-                    transformer_->setTransform(transform, "zio", false);
-                    last_tf_time = transform.header.stamp;
-                  }
-                  tf_iter++;
+                for (const auto &transform: tf_msg->transforms) {
+                  transformer_->setTransform(transform, "zio", false);
+                  last_tf_time = transform.header.stamp;
+                }
+                tf_iter++;
               }
+            }
           }
 
-          // if horizonInBuffer param is set, calculate base_link to base_link_horizon tf
-          // query the bag imu msgs so that transformer buffers horizon tf up to 2s in the future
-          while (horizonInBuffer && imu_iter != imu_view.end()
-              && last_imu_time < header_time + ros::Duration(2)) {
+          if (imu_view) {
+            // if horizonInBuffer param is set, calculate base_link to base_link_horizon tf
+            // query the bag imu msgs so that transformer buffers horizon tf up to 2s in the future
+            while (horizonInBuffer && imu_iter != imu_view->end()
+                   && last_imu_time < header_time + ros::Duration(2)) {
 
               auto imu_msg = imu_iter->instantiate<sensor_msgs::Imu>();
 
@@ -565,6 +616,7 @@ void h264_bag_playback::ReadFromBag() {
                 last_imu_time = imu_msg->header.stamp;
                 imu_iter++;
               }
+            }
           }
         }
 
@@ -711,10 +763,10 @@ void h264_bag_playback::StaticTfPublisher(rosbag::Bag &bag, bool do_publish) {
 }
 
 void
-h264_bag_playback::AdvertiseTopics(rosbag::View &view) {
+h264_bag_playback::AdvertiseTopics(std::shared_ptr<rosbag::View> view) {
 
   // Create a publisher and advertise for all of our message types
-  for(const rosbag::ConnectionInfo* c: view.getConnections())
+  for(const rosbag::ConnectionInfo* c: view->getConnections())
   {
     // skip adding tf static. static should be published by static tf broadcaster
     // so that if bag isn't played from begining, static will still be published
