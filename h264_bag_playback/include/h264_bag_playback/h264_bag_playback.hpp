@@ -17,7 +17,9 @@
 #include <rosbag/view.h>
 
 #include <tf2_msgs/TFMessage.h>
-
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <tf2_sensor_msgs/tf2_sensor_msgs.h>
+#include <tf2/buffer_core.h>
 #include <tf2_ros/buffer.h>
 #include <tf2/LinearMath/Transform.h>
 #include <tf2_ros/transform_broadcaster.h>

@@ -139,7 +139,7 @@ void h264_bag_playback::init_playback() {
       return;
 
 
-  // determine the file prefixes and initialise each camera
+    // determine the file prefixes and initialise each camera
     std::string file_prefix = remove_last_of_string(bag_file_name, ".");
     std::string dataset_name = keep_last_of_string(file_prefix, "/");
     ROS_INFO_STREAM("Reading from bag: " << bag_file_name << " dataset name " << dataset_name);
@@ -292,6 +292,7 @@ void h264_bag_playback::init_playback() {
 
 void h264_bag_playback::ReadFromBag() {
 
+ 
 
   // generate the views
   for (auto bag: bags) {
@@ -307,6 +308,7 @@ void h264_bag_playback::ReadFromBag() {
   // creat a tf bag view object so that we can view future tf msgs
   std::vector<std::string> tf_topics{"tf", "/tf"};
   std::vector<std::string> imu_topics{"vn100/imu", "/vn100/imu"};
+ 
 
   std::shared_ptr<rosbag::View> tf_view, imu_view;
   for (auto bag: bags) {
@@ -719,46 +721,61 @@ void h264_bag_playback::StaticTfPublisher(rosbag::Bag &bag, bool do_publish) {
     }
 
     for (const auto &transform: tf->transforms) {
-      transformer_->setTransform(transform, "zio", true);
+
+      if(transform.child_frame_id == "velodyne_front_link"){
+          // replace the static transform to the velodyne for testing
+
+          tf2::Transform odom_tf;
+          tf2::fromMsg(transform.transform, odom_tf);
+          double r,p,yaw;
+          odom_tf.getBasis().getRPY(r,p,yaw);
+          ROS_ERROR_STREAM("original velodyne tf yaw "<<yaw << " pitch " << p << " roll " << r);
+
+        geometry_msgs::TransformStamped transformStamped;
+        transformStamped.header.stamp = ros::Time::now();
+        transformStamped.header.frame_id = "base_link" ;
+        transformStamped.child_frame_id = "velodyne_front_link";
+
+        transformStamped.transform.translation.x = transform.transform.translation.x;
+        transformStamped.transform.translation.y = transform.transform.translation.y;
+        transformStamped.transform.translation.z = transform.transform.translation.z;
+
+        float new_roll, new_pitch, new_yaw;
+        private_nh.param<float>("new_roll", new_roll, 0.);
+        private_nh.param<float>("new_pitch", new_pitch, 0.);
+        private_nh.param<float>("new_yaw", new_yaw, 0.);
+        ROS_ERROR_STREAM("offseting velodyne tf yaw "<<new_yaw << " pitch " << new_pitch << " roll " << new_roll);
+
+        new_yaw += yaw;
+        new_pitch += p;
+        new_roll += r;
+
+        tf2::Quaternion quat;
+        quat.setRPY(new_roll, new_pitch, new_yaw);
+
+        transformStamped.transform.rotation.x = quat.x();
+        transformStamped.transform.rotation.y = quat.y();
+        transformStamped.transform.rotation.z = quat.z();
+        transformStamped.transform.rotation.w = quat.w();
+
+        static_broadcaster.sendTransform(transformStamped);
+        transformer_->setTransform(transformStamped, "zio", true);
+
+        tf2::Transform odom_tf_2;
+        tf2::fromMsg(transformStamped.transform, odom_tf_2);
+        odom_tf_2.getBasis().getRPY(r,p,yaw);
+        ROS_ERROR_STREAM("velodyne tf now reads yaw "<<yaw << " pitch " << p << " roll " << r);
+
+      }else{
+        transformer_->setTransform(transform, "zio", true);
+      }
+
     }
-
     n_static_tf++;
-
-    if (n_static_tf > 10)
+    if(n_static_tf>10)
         break;
+
   }
-
-  ROS_INFO_STREAM("REPLACING THE velodyne_front_link TRANSFORM FOR TESTING");
-  // replace the static transform to the velodyne for testing
-  tf2_msgs::TFMessage replace_transform;
-
-    geometry_msgs::TransformStamped transformStamped;
-    transformStamped.header.stamp = ros::Time::now();
-    transformStamped.header.frame_id = "base_link" ;
-    transformStamped.child_frame_id = "velodyne_front_link";
-
-    transformStamped.transform.translation.x = 1.2;
-    transformStamped.transform.translation.y = 0;
-    transformStamped.transform.translation.z = 1.37;
-
-
-    float new_roll, new_pitch, new_yaw;
-    private_nh.param<float>("new_roll", new_roll, 0.);
-    private_nh.param<float>("new_pitch", new_pitch, 0.061);
-    private_nh.param<float>("new_yaw", new_yaw, 0.);
-
-    tf2::Quaternion quat;
-    quat.setEuler(new_roll, new_pitch, new_yaw);
-    //quat.setEuler(-0.02, 0.1335, -0.05);
-
-    transformStamped.transform.rotation.x = quat.x();
-    transformStamped.transform.rotation.y = quat.y();
-    transformStamped.transform.rotation.z = quat.z();
-    transformStamped.transform.rotation.w = quat.w();
-
-    static_broadcaster.sendTransform(transformStamped);
-
-
     ROS_INFO_STREAM("Loaded static TF tree data");
 }
 
