@@ -14,7 +14,7 @@
 
   <param name="new_roll" value="0.0" />
   <param name="new_pitch" value="0.067" />
-  <param name="new_yaw" value="-0.04" />
+  <param name="new_yaw" value="0.0" />
 
   <param name="new_pitch_old" value="0.1335" />
   <param name="new_yaw_old" value="-0.05" />

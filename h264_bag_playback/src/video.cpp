@@ -1,6 +1,32 @@
 #include <video.hpp>
 
 
+void
+Video::ScaleCameraInfoMsg(int original_width,
+                          int scaled_width,
+                          int original_height,
+                          int scaled_height,
+                          sensor_msgs::CameraInfo::Ptr &scaled_info_msg) {
+
+  double scale_y = static_cast<double>(scaled_height) / original_height;
+  double scale_x = static_cast<double>(scaled_width) / original_width;
+
+  scaled_info_msg->height = scaled_height;
+  scaled_info_msg->width = scaled_width;
+
+  scaled_info_msg->K[0] = scaled_info_msg->K[0] * scale_x;  // fx
+  scaled_info_msg->K[2] = scaled_info_msg->K[2] * scale_x;  // cx
+  scaled_info_msg->K[4] = scaled_info_msg->K[4] * scale_y;  // fy
+  scaled_info_msg->K[5] = scaled_info_msg->K[5] * scale_y;  // cy
+
+  scaled_info_msg->P[0] = scaled_info_msg->P[0] * scale_x;  // fx
+  scaled_info_msg->P[2] = scaled_info_msg->P[2] * scale_x;  // cx
+  scaled_info_msg->P[3] = scaled_info_msg->P[3] * scale_x;  // T
+  scaled_info_msg->P[5] = scaled_info_msg->P[5] * scale_y;  // fy
+  scaled_info_msg->P[6] = scaled_info_msg->P[6] * scale_y;  // cy
+}
+
+
 
 void Video::InitialiseCameraInfo(sensor_msgs::CameraInfo &camera_info) {
 

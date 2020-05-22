@@ -17,53 +17,17 @@
 #include <rosbag/view.h>
 
 #include <tf2_msgs/TFMessage.h>
-//#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-//#include <tf2_sensor_msgs/tf2_sensor_msgs.h>
-//#include <tf2/buffer_core.h>
+
 #include <tf2_ros/buffer.h>
 #include <tf2/LinearMath/Transform.h>
 #include <tf2_ros/transform_broadcaster.h>
 
-
+#include "bag_container.hpp"
 #include "video.hpp"
 
 
 namespace dataset_toolkit
 {
-
-
-  class BagContainer {
-  public:
-
-    ~BagContainer() {
-      bag.close();
-    }
-
-    bool Open(std::string file_name) {
-
-      bag_file_name = file_name;
-
-      bag.open(file_name);
-
-      if (!bag.isOpen()) {
-        ROS_INFO_STREAM("Could not OPEN bagfile " << file_name);
-        return false;
-      }
-
-      rosbag::View connections_view(bag);
-      for(const rosbag::ConnectionInfo* info: connections_view.getConnections()) {
-        topics.insert(info->topic);
-      }
-      return true;
-    }
-
-    rosbag::Bag bag;
-    std::shared_ptr<rosbag::View> view;
-    rosbag::View::iterator iter;
-    std::string bag_file_name;
-    std::set<std::string> topics;
-  };
-
 
 
 
@@ -95,12 +59,6 @@ protected:
 
   void AdvertiseTopics(std::shared_ptr<rosbag::View> view);
 
-  // scale the camera info message for a different output size
-  void ScaleCameraInfoMsg(int original_width,
-                          int scaled_width,
-                          int original_height,
-                          int scaled_height,
-                          sensor_msgs::CameraInfo::Ptr &scaled_info_msg);
 
   // A publisher for each topic in the bag
   std::map<std::string, ros::Publisher> publishers;

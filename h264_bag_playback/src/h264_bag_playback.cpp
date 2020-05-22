@@ -67,7 +67,7 @@ void h264_bag_playback::timerCallback(const ros::TimerEvent& event) {
   ReadFromBag();
 }
 
-
+/*
 void
 h264_bag_playback::ScaleCameraInfoMsg(int original_width,
                                       int scaled_width,
@@ -92,7 +92,7 @@ h264_bag_playback::ScaleCameraInfoMsg(int original_width,
   scaled_info_msg->P[5] = scaled_info_msg->P[5] * scale_y;  // fy
   scaled_info_msg->P[6] = scaled_info_msg->P[6] * scale_y;  // cy
 }
-
+*/
 
 
 void h264_bag_playback::init_playback() {
@@ -410,7 +410,7 @@ void h264_bag_playback::ReadFromBag() {
         *scaled_info_msg = *cam_info_msg;
 
         if (scaled_height && scaled_width) {
-          ScaleCameraInfoMsg(cam_info_msg->width,
+          Video::ScaleCameraInfoMsg(cam_info_msg->width,
               scaled_width,
               cam_info_msg->height,
               scaled_height,

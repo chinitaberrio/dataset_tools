@@ -21,6 +21,13 @@ public:
 
   bool valid_camera_info;
 
+  // scale the camera info message for a different output size
+  static void ScaleCameraInfoMsg(int original_width,
+                          int scaled_width,
+                          int original_height,
+                          int scaled_height,
+                          sensor_msgs::CameraInfo::Ptr &scaled_info_msg);
+
   cv::Mat camera_matrix, distance_coeffs, map1, map2;
 
   std::string file_name;
