@@ -767,6 +767,8 @@ void h264_bag_playback::StaticTfPublisher(rosbag::Bag &bag, bool do_publish) {
         odom_tf_2.getBasis().getRPY(r,p,yaw);
         ROS_ERROR_STREAM("velodyne tf now reads yaw "<<yaw << " pitch " << p << " roll " << r);
 
+      }else if(transform.child_frame_id == "utm"){
+        continue;
       }else{
         transformer_->setTransform(transform, "zio", true);
       }
