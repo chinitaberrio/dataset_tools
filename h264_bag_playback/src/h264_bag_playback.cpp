@@ -163,7 +163,7 @@ void h264_bag_playback::init_playback() {
         // if it is not this bag
         if (bag != new_bag) {
           for (auto topic_name: new_bag->topics){
-            if (bag->topics.find(topic_name) != bag->topics.end()) {
+            if (bag->topics.find(topic_name) != bag->topics.end() && topic_name != "/tf_static") {
               bag->topics.erase(topic_name);
               ROS_INFO_STREAM ("replacing " << topic_name << " from bag " << bag->bag_file_name << " as it exists in bag " << new_bag->bag_file_name);
             }
@@ -315,13 +315,13 @@ void h264_bag_playback::ReadFromBag() {
     for (auto tf_topic: tf_topics) {
       if (bag->topics.find(tf_topic) != bag->topics.end()) {
         ROS_INFO_STREAM("starting TF view from bag " << bag->bag_file_name);
-        tf_view = std::make_shared<rosbag::View>(bags.front()->bag, rosbag::TopicQuery(tf_topics), requested_start_time, requested_end_time);
+        tf_view = std::make_shared<rosbag::View>(bag->bag, rosbag::TopicQuery(tf_topics), requested_start_time, requested_end_time);
       }
     }
     for (auto imu_topic: imu_topics) {
       if (bag->topics.find(imu_topic) != bag->topics.end()) {
         ROS_INFO_STREAM("starting IMU view from bag " << bag->bag_file_name);
-        imu_view = std::make_shared<rosbag::View>(bags.front()->bag, rosbag::TopicQuery(imu_topics), requested_start_time, requested_end_time);
+        imu_view = std::make_shared<rosbag::View>(bag->bag, rosbag::TopicQuery(imu_topics), requested_start_time, requested_end_time);
       }
     }
   }
@@ -591,6 +591,7 @@ void h264_bag_playback::ReadFromBag() {
               if (tf_msg) {
                 for (const auto &transform: tf_msg->transforms) {
                   transformer_->setTransform(transform, "zio", false);
+//                  tf_broadcaster.sendTransform(transform); // for debugging tf buffer
                   last_tf_time = transform.header.stamp;
                 }
                 tf_iter++;
