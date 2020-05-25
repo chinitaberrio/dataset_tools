@@ -9,8 +9,8 @@ PointCloudFeaturesPipeline::PointCloudFeaturesPipeline() {
 
   input_pointcloud.Initialise("/velodyne/front/points");
 
-  output_poles.Initialise("/velodyne/front/pole_stacker/output", pipes_out);
-  output_corners.Initialise("/velodyne/front/corner_stacker/output", pipes_out);
+  output_poles.Initialise("/velodyne/front/pole_stacker/average", pipes_out);
+  output_corners.Initialise("/velodyne/front/corner_stacker/average", pipes_out);
 }
 
 
