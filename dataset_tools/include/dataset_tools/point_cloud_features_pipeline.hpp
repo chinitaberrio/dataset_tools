@@ -16,7 +16,7 @@ public:
   PointCloudFeaturesPipeline();
   ~PointCloudFeaturesPipeline() {}
 
-  void receive_message(const sensor_msgs::PointCloud2& input_pointcloud);
+  void receive_message(const sensor_msgs::PointCloud2::ConstPtr& input_pointcloud);
 
   std::function<void(const pcl::PointCloud<pcl::PointXYZIRC>::Ptr&, const pcl::PointCloud<pcl::PointXYZIRC>::Ptr&)> publish_poles_corners;
 
