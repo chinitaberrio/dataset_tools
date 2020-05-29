@@ -4,8 +4,7 @@
 #include <pcl_ros/transforms.h>
 #include <pcl_conversions/pcl_conversions.h>
 
-
-ICPMatcherPipeline::ICPMatcherPipeline() {
+ICPMatcherPipeline::ICPMatcherPipeline(): datum_x_(0.), datum_y_(0.) {
 
   input_poles.Initialise("/velodyne/front/pole_stacker/average");
   input_corners.Initialise("/velodyne/front/corner_stacker/average");
@@ -25,11 +24,38 @@ ICPMatcherPipeline::receive_message(const pcl::PointCloud<pcl::PointXYZIRC>::Ptr
 
   ROS_INFO_STREAM("wait for ICP matcher");
 
+  if (datum_x_ == 0. || datum_y_ == 0.) {
+
+    tf::StampedTransform transform;
+    try {
+      transform_listener.lookupTransform("utm", "map", ros::Time(0), transform);
+      datum_x_ = transform.getOrigin().x();
+      datum_y_ = transform.getOrigin().y();
+
+    }
+    catch (tf::TransformException &ex) {
+      ROS_ERROR("%s",ex.what());
+    }
+  }
+
+//  ROS_ERROR_STREAM("ICPMatcherPipeline initialised datum: " << datum_x_ << ", " << datum_y_ );
+
   if (WaitForMessages()) {
-    ROS_INFO_STREAM("ICP Matcher received response " << output_pose.last_message->pose.pose.position.x << ", "
-                                         << output_pose.last_message->pose.pose.position.y);
+//    ROS_INFO_STREAM("ICP Matcher received response " << output_pose.last_message->pose.pose.position.x << ", "
+//                                         << output_pose.last_message->pose.pose.position.y);
+
+    output_pose.last_message->pose.pose.position.x += datum_x_;
+    output_pose.last_message->pose.pose.position.y += datum_y_;
+
+    ROS_INFO_STREAM("ICP Matcher received response " << std::fixed << output_pose.last_message->pose.pose.position.x << ", "
+                                         << output_pose.last_message->pose.pose.position.y << " in UTM frame");
+
+    if (publish_pose) {
+      publish_pose(output_pose.last_message);
+    }
   }
   else {
     ROS_INFO_STREAM("ICP Matcher No messages received");
+    output_pose.last_message = NULL;
   }
 }
