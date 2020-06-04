@@ -7,6 +7,9 @@
 
 // Algorithms we want this type to work with
 #include <pcl/kdtree/impl/kdtree_flann.hpp>
+#include <pcl/filters/impl/crop_box.hpp>
+#include <pcl/impl/pcl_base.hpp>
+
 
 namespace pcl {
 
