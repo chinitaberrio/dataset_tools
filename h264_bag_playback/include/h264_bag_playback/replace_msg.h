@@ -43,10 +43,10 @@ protected:
     void MessagePublisher(ros::Publisher &publisher, const rosbag::MessageInstance &message);
     void CameraInfoPublisher(ros::Publisher &publisher, const rosbag::MessageInstance &message,
                              const sensor_msgs::CameraInfoConstPtr &scaled_info_msg);
-//    void StaticTfPublisher(rosbag::Bag &bag, bool do_publish=true);
+    void StaticTfPublisher(rosbag::Bag &bag, bool do_publish=true);
 
 
-    rosbag::Bag bag;
+    rosbag::Bag out_bag;
 
 };
 }
