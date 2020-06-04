@@ -54,7 +54,8 @@ h264_bag_playback::h264_bag_playback() :
         private_nh("~"),
         image_transport(public_nh),
         playback_start(ros::TIME_MIN),
-        playback_end(ros::TIME_MAX){
+        playback_end(ros::TIME_MAX),
+        total_message_count(0){
 }
 
 
@@ -354,6 +355,11 @@ void h264_bag_playback::ReadFromBag() {
 
   // for each message in the rosbag
 //  for(rosbag::MessageInstance const m: view)
+
+  for (auto bag: bags) {
+    if (bag->view)
+      total_message_count += bag->view->size();
+  }
 
   while (true)
   {
@@ -740,7 +746,7 @@ void h264_bag_playback::StaticTfPublisher(rosbag::Bag &bag, bool do_publish) {
 
         transformStamped.transform.translation.x = transform.transform.translation.x;
         transformStamped.transform.translation.y = transform.transform.translation.y;
-        transformStamped.transform.translation.z = transform.transform.translation.z;
+        transformStamped.transform.translation.z = transform.transform.translation.z;q
 
         float new_roll, new_pitch, new_yaw;
         private_nh.param<float>("new_roll", new_roll, 0.);

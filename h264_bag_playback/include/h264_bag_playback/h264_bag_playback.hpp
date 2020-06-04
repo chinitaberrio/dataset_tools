@@ -110,6 +110,8 @@ protected:
 
   bool horizonInBuffer;
   tf2_ros::TransformBroadcaster tf_broadcaster;
+
+  uint32_t total_message_count;
 };
 
 }
