@@ -22,7 +22,8 @@
     void ImagePublisher(image_transport::Publisher &publisher, const sensor_msgs::ImageConstPtr &message) {}
 
 
-    void CameraInfoPublisher(ros::Publisher &publisher, const sensor_msgs::CameraInfoConstPtr &message) {}
+    void CameraInfoPublisher(ros::Publisher &publisher, const rosbag::MessageInstance &message,
+                                       const sensor_msgs::CameraInfoConstPtr &scaled_info_msg){}
 
 
     void MessagePublisher(ros::Publisher &publisher, const rosbag::MessageInstance &message) {
