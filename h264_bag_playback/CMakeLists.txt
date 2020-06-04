@@ -51,7 +51,6 @@ target_link_libraries(${PROJECT_NAME}_node
 		${catkin_LIBRARIES}
 		${OpenCV_LIBS})
 
-
 add_library(${PROJECT_NAME}
 		src/h264_bag_playback.cpp
 		src/video.cpp
@@ -62,6 +61,14 @@ target_link_libraries(${PROJECT_NAME}
 		${catkin_LIBRARIES}
 		${OpenCV_LIBS})
 
+add_executable(replaceMsg_writeToBag
+                src/replace_msg.cpp)
+
+target_link_libraries(replaceMsg_writeToBag
+                ${PROJECT_NAME}
+                ${catkin_LIBRARIES}
+                ${OpenCV_LIBS})
+
 if(catkin_EXPORTED_LIBRARIES)
   add_dependencies(${PROJECT_NAME}
 		  ${catkin_EXPORTED_LIBRARIES}
@@ -69,14 +76,14 @@ if(catkin_EXPORTED_LIBRARIES)
 		  ${OpenCV_LIBS})
 endif()
 
-install(TARGETS ${PROJECT_NAME}_node
+install(TARGETS ${PROJECT_NAME}_node replaceMsg_writeToBag
 		ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 		LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 		RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
 
 ## Mark the nodelet library for installations
-install(TARGETS ${PROJECT_NAME}
+install(TARGETS ${PROJECT_NAME} replaceMsg_writeToBag
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})

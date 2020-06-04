@@ -425,7 +425,7 @@ void h264_bag_playback::ReadFromBag() {
 
         // todo: make this go through the MessagePublisher structure
         //MessagePublisher(pub_iter->second, scaled_info_msg);
-        CameraInfoPublisher(pub_iter->second, scaled_info_msg);
+        CameraInfoPublisher(pub_iter->second, m, scaled_info_msg);
 
         ros::spinOnce();
       }
@@ -683,8 +683,9 @@ h264_bag_playback::imu2horizontf(sensor_msgs::Imu::Ptr &imu_msg, geometry_msgs::
 }
 
 void
-h264_bag_playback::CameraInfoPublisher(ros::Publisher &publisher, const sensor_msgs::CameraInfoConstPtr &message) {
-  publisher.publish(message);
+h264_bag_playback::CameraInfoPublisher(ros::Publisher &publisher, const rosbag::MessageInstance &message,
+                                       const sensor_msgs::CameraInfoConstPtr &scaled_info_msg) {
+  publisher.publish(scaled_info_msg);
 }
 
 
@@ -724,7 +725,7 @@ void h264_bag_playback::StaticTfPublisher(rosbag::Bag &bag, bool do_publish) {
     for (const auto &transform: tf->transforms) {
 
       if(transform.child_frame_id == "velodyne_front_link"){
-          // replace the static transform to the velodyne for testing
+          // replace base->velodyne for testing
 
           tf2::Transform odom_tf;
           tf2::fromMsg(transform.transform, odom_tf);
