@@ -746,7 +746,7 @@ void h264_bag_playback::StaticTfPublisher(rosbag::Bag &bag, bool do_publish) {
 
         transformStamped.transform.translation.x = transform.transform.translation.x;
         transformStamped.transform.translation.y = transform.transform.translation.y;
-        transformStamped.transform.translation.z = transform.transform.translation.z;q
+        transformStamped.transform.translation.z = transform.transform.translation.z;
 
         float new_roll, new_pitch, new_yaw;
         private_nh.param<float>("new_roll", new_roll, 0.);

@@ -1,5 +1,8 @@
 std_msgs/Header header
 
+string source
+
+dataset_tools/Observation observation
 dataset_tools/Innovation innovation
 dataset_tools/Confidence confidence
 
