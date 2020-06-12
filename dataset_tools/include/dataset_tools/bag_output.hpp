@@ -32,6 +32,7 @@ public:
   void publish_stats(dataset_tools::LocaliserStats &msg, std::string topic_name);
 
   std::shared_ptr<rosbag::Bag> bag;
+
 };
 
 

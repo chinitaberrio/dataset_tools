@@ -59,6 +59,7 @@ add_library(${PROJECT_NAME}
     src/run_pipeline.cpp
     src/point_cloud_features_pipeline.cpp
     src/icp_matcher_pipeline.cpp
+    src/behavior_tree_pipeline.cpp
 )
 
 

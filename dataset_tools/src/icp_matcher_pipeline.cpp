@@ -9,7 +9,7 @@ ICPMatcherPipeline::ICPMatcherPipeline(): datum_x_(0.), datum_y_(0.) {
   input_poles.Initialise("/velodyne/front/pole_stacker/average");
   input_corners.Initialise("/velodyne/front/corner_stacker/average");
 
-  output_pose.Initialise("/localisation/icp/icp_matcher/odom_corrected", pipes_out);
+  output_pose.Initialise("/localiser/icp_matcher/odom_corrected", pipes_out);
 }
 
 
