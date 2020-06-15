@@ -104,6 +104,9 @@ void h264_bag_playback::init_playback() {
     private_nh.param("output_width", scaled_width, 0);
     private_nh.param("output_height", scaled_height, 0);
 
+    private_nh.param("scale_playback_speed", scale_playback_speed, 1.0);
+
+
     if (scaled_height && scaled_width) {
       ROS_INFO_STREAM("output images will be scaled to " << scaled_width << "x" << scaled_height);
     }
@@ -635,10 +638,14 @@ void h264_bag_playback::ReadFromBag() {
           start_imu_time = time;
         }
 
-        ros::Duration time_difference = (time - start_imu_time) - (ros::Time::now() - start_ros_time);
+        double sensor_time = (time - start_imu_time).toSec();
+        double playback_time = (ros::Time::now() - start_ros_time).toSec();
+        double scaled_time_difference = sensor_time - playback_time * scale_playback_speed;
+//        ros::Duration time_difference = (time - start_imu_time) - (ros::Time::now() - start_ros_time);
 
         // hold back the playback to be realtime if limit_playback_speed parameter is set
-        if (limit_playback_speed && time_difference.toSec() > 0) {
+        if (limit_playback_speed && scaled_time_difference > 0) {
+          ros::Duration time_difference(scaled_time_difference);
           time_difference.sleep();
         }
 

@@ -93,6 +93,8 @@ protected:
   int scaled_width;
   int scaled_height;
   bool limit_playback_speed;
+  double scale_playback_speed = 1.0;
+
   ros::Duration time_offset_;
 
 //  std::list<std::shared_ptr<rosbag::Bag>> bags;
