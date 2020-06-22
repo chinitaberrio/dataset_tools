@@ -12,7 +12,7 @@ BehaviorTreePipeline::BehaviorTreePipeline()
 void
 BehaviorTreePipeline::receive_message(const nav_msgs::Odometry::ConstPtr& input_odom) {
 
-  ROS_INFO_STREAM("sending tick to behavior tree" );
+//  ROS_INFO_STREAM("sending tick to behavior tree" );
 
 
   ResetMessageFlags();
@@ -20,7 +20,7 @@ BehaviorTreePipeline::receive_message(const nav_msgs::Odometry::ConstPtr& input_
   input_prompt.PublishMessage(input_odom);
 
   if (WaitForMessages()) {
-    ROS_INFO_STREAM("received tock and return to read bag msgs");
+//    ROS_INFO_STREAM("received tock and return to read bag msgs");
 
 //    if (publish_poles_corners) {
 //      publish_poles_corners(output_poles.last_message, output_corners.last_message);

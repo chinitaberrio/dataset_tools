@@ -22,7 +22,6 @@ ICPMatcherPipeline::receive_message(const pcl::PointCloud<pcl::PointXYZIRC>::Ptr
   input_poles.PublishMessage(poles_pointcloud);
   input_corners.PublishMessage(corners_pointcloud);
 
-  ROS_INFO_THROTTLE(1, "wait for ICP matcher");
 
   if (datum_x_ == 0. || datum_y_ == 0.) {
 
