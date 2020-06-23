@@ -45,13 +45,13 @@ ICPMatcherPipeline::receive_message(const pcl::PointCloud<pcl::PointXYZIRC>::Ptr
     output_pose.last_message->pose.pose.position.x += datum_x_;
     output_pose.last_message->pose.pose.position.y += datum_y_;
 
-    if(std::isnan(output_pose.last_message->pose.pose.position.x) ){
-      ROS_INFO_STREAM_THROTTLE(1, "ICP Matcher received response " << std::fixed << output_pose.last_message->pose.pose.position.x << ", "
-                                         << output_pose.last_message->pose.pose.position.y);
-    }else{
-        ROS_INFO_STREAM_THROTTLE(1, "ICP Matcher received response " << std::fixed << output_pose.last_message->pose.pose.position.x << ", "
-                                             << output_pose.last_message->pose.pose.position.y );
-    }
+//    if(std::isnan(output_pose.last_message->pose.pose.position.x) ){
+//      ROS_INFO_STREAM_THROTTLE(1, "ICP Matcher received response " << std::fixed << output_pose.last_message->pose.pose.position.x << ", "
+//                                         << output_pose.last_message->pose.pose.position.y);
+//    }else{
+//        ROS_INFO_STREAM_THROTTLE(1, "ICP Matcher received response " << std::fixed << output_pose.last_message->pose.pose.position.x << ", "
+//                                             << output_pose.last_message->pose.pose.position.y );
+//    }
 
     if (publish_pose) {
       publish_pose(output_pose.last_message);
