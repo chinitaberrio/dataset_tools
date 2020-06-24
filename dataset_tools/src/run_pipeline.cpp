@@ -41,7 +41,7 @@ RunPipeline::WaitForMessages(float time_out) {
     }
 
     if ((ros::Time::now() - start_time).toSec() > time_out) {
-        ROS_ERROR("wait for ICP matcher timed out");
+        ROS_ERROR("wait for pipeline messages timed out");
       break;
     }
 
