@@ -4,7 +4,7 @@ string source
 
 dataset_tools/Observation observation
 dataset_tools/Innovation innovation
-dataset_tools/Confidence confidence
+float32 confidence
 
 # Row-major representation of the 3x3 covariance matrix
 # The orientation parameters use a fixed-axis representation.

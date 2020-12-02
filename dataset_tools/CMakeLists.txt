@@ -26,7 +26,6 @@ find_package(catkin REQUIRED COMPONENTS
 add_message_files(
         FILES
         Observation.msg
-        Confidence.msg
         Innovation.msg
         LocaliserStats.msg
 )
