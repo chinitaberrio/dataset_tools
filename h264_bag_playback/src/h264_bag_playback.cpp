@@ -149,7 +149,7 @@ void h264_bag_playback::init_playback() {
     ROS_INFO_STREAM("Reading from bag: " << bag_file_name << " dataset name " << dataset_name);
 
     std::vector<std::string> file_list;
-    get_files_pattern(file_prefix + "*.h264", file_list);
+    get_files_pattern(file_prefix + "*.mp4", file_list);
 
     std::vector<std::string> extensions_list;
     get_files_pattern(file_prefix + ".*.bag", extensions_list);
@@ -391,9 +391,6 @@ void h264_bag_playback::ReadFromBag() {
 
     ros::Time const& time = m.getTime();
 
-    //std::cout << "topic " << topic << std::endl;
-
-
     if (topic == "/tf_static" || topic == "tf_static") {
       // static transforms are handled separately
       continue;
@@ -487,20 +484,13 @@ void h264_bag_playback::ReadFromBag() {
 
             // try to jump forward through the video
             if (current_video.video_device.set(CV_CAP_PROP_POS_FRAMES, frame_info_msg->frame_counter)) {
-              cv::Mat new_frame;
-              while (ros::ok() && current_video.frame_counter < frame_info_msg->frame_counter) {
-                current_video.video_device >> new_frame;
-                current_video.frame_counter++;
-                ROS_INFO_STREAM_THROTTLE(0.5, "throwing away frame for camera " << camera_name);
-              }
+              ROS_INFO_STREAM("tracking camera " << camera_name << " from frame " << current_video.frame_counter << " to frame " << frame_info_msg->frame_counter);
             }
-            // todo: this doesn't seem to work for h.264 probably due to the way it is encoded
-            // this is worth revisiting
-            // https://stackoverflow.com/questions/2974625/opencv-seek-function-rewind
             else {
-              ROS_INFO_STREAM("tracking camera to frame " << camera_name);
-              current_video.frame_counter = frame_info_msg->frame_counter;
+              ROS_ERROR_STREAM("could not move camera " << camera_name << " to frame " << frame_info_msg->frame_counter);
             }
+
+            current_video.frame_counter = current_video.video_device.get(CV_CAP_PROP_POS_FRAMES);
           }
 
           // check that the frame counter aligns with the number of frames in the video
