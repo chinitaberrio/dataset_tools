@@ -1,6 +1,6 @@
 **NOTE: this branch reads mp4 files, and allows the playback tool to seek immediately to the correct location in the file**
 
-**Usage: **First, you need to convert the existing .h264 files into .mp4 files. There is a script dataset_tools/h264_bag_playback/scripts/convert_videos.sh
+**Usage: ** First, you need to convert the existing .h264 files into .mp4 files. There is a script dataset_tools/h264_bag_playback/scripts/convert_videos.sh
 
 Run this script with ./convert_videos /root_folder_for_datasets
 This script currently expects a folder containing one or more dataset folders (i.e. /data/Week1, /data/Week2, etc). The script is designed to work off the /data folder
