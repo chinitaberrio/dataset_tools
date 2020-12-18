@@ -1,3 +1,13 @@
+**NOTE: this branch reads mp4 files, and allows the playback tool to seek immediately to the correct location in the file**
+
+**Usage: **First, you need to convert the existing .h264 files into .mp4 files. There is a script dataset_tools/h264_bag_playback/scripts/convert_videos.sh
+
+Run this script with ./convert_videos /root_folder_for_datasets
+This script currently expects a folder containing one or more dataset folders (i.e. /data/Week1, /data/Week2, etc). The script is designed to work off the /data folder
+
+Once the files are converted, run the playback tool the same way as before. The only difference you will notice is that the video seeks straight away, there is no "discarding frames" messages anymore.
+
+Previous README:
 h264_bag_tools is a c++ program that takes a bag file + h.264 files and replays them as if on a live system. The bag
 file must contain frame_info_msg messages that link each frame of the h.264 video files to the bag. The playback
 tool publishes topics for the uncorrected images /gmsl/\<camera name\>/image_color and the corrected images (given the
