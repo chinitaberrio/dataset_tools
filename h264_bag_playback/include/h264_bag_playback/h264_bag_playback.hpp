@@ -48,10 +48,42 @@ public:
 
   void ReadFromBag();
 
+  void SeekTime(ros::Time seek_time);
+
   std::shared_ptr<tf2_ros::Buffer> transformer_;
 
   ros::NodeHandle private_nh;
   ros::NodeHandle public_nh;
+
+  void OpenBags();
+  bool ReadNextPacket();
+
+
+  std::shared_ptr<rosbag::View> tf_view, imu_view;
+  rosbag::View::iterator tf_iter, imu_iter;
+  ros::Time last_tf_time;
+  ros::Time last_imu_time;
+
+
+  ros::Time start_ros_time;
+  ros::Time start_imu_time;
+  ros::Time start_frame_time;
+
+  ros::Time last_packet_time;
+
+  ros::Time requested_start_time;
+  ros::Time requested_end_time;
+
+  std::list<std::shared_ptr<BagContainer>> bags;
+
+  // A video object for each video file being read
+  std::map<std::string, Video> videos;
+
+
+  bool limit_playback_speed;
+  double scale_playback_speed = 1.0;
+
+
 
 protected:
 
@@ -65,8 +97,6 @@ protected:
   // A publisher for each topic in the bag
   std::map<std::string, ros::Publisher> publishers;
 
-  // A video object for each video file being read
-  std::map<std::string, Video> videos;
 
   // These are hard coded for the time being to fit the ACFR campus dataset
   std::map<std::string, std::string> frame_id_dict = {{"A0", "gmsl_centre_link"},
@@ -89,21 +119,23 @@ protected:
 
   image_transport::ImageTransport image_transport;
 
-  std::string bag_file_name;
+
+
+
+
+
+    std::string bag_file_name;
   int scaled_width;
   int scaled_height;
-  bool limit_playback_speed;
-  double scale_playback_speed = 1.0;
 
   ros::Duration time_offset_;
 
 //  std::list<std::shared_ptr<rosbag::Bag>> bags;
-  std::list<std::shared_ptr<BagContainer>> bags;
 
-  ros::Time requested_start_time;
-  ros::Time requested_end_time;
 
-  // parameters for selecting part of the dataset
+    ros::Time bag_start_time, bag_end_time;
+
+    // parameters for selecting part of the dataset
   ros::Time playback_start, playback_end;
   ros::Duration playback_duration;
 

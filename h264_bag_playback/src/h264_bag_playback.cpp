@@ -209,8 +209,8 @@ void h264_bag_playback::init_playback() {
     // assume the "main" bag covers the most important times
     rosbag::View overall_view(bags.front()->bag);
 
-    ros::Time bag_start_time = overall_view.getBeginTime();
-    ros::Time bag_end_time = overall_view.getEndTime();
+    bag_start_time = overall_view.getBeginTime();
+    bag_end_time = overall_view.getEndTime();
     auto bag_duration = (bag_end_time-bag_start_time).toSec();
 
 
@@ -287,6 +287,8 @@ void h264_bag_playback::init_playback() {
     }
     //StaticTfPublisher(bags.front()->bag);
 
+    last_packet_time = requested_start_time;
+
     private_nh.param<bool>("horizon_in_buffer", horizonInBuffer, false);
 
 
@@ -294,9 +296,8 @@ void h264_bag_playback::init_playback() {
 }
 
 
-void h264_bag_playback::ReadFromBag() {
 
- 
+void h264_bag_playback::OpenBags() {
 
   // generate the views
   for (auto bag: bags) {
@@ -312,16 +313,18 @@ void h264_bag_playback::ReadFromBag() {
   // creat a tf bag view object so that we can view future tf msgs
   std::vector<std::string> tf_topics{"tf", "/tf"};
   std::vector<std::string> imu_topics{"vn100/imu", "/vn100/imu"};
- 
 
-  std::shared_ptr<rosbag::View> tf_view, imu_view;
+
+
   for (auto bag: bags) {
+
     for (auto tf_topic: tf_topics) {
       if (bag->topics.find(tf_topic) != bag->topics.end()) {
         ROS_INFO_STREAM("starting TF view from bag " << bag->bag_file_name);
         tf_view = std::make_shared<rosbag::View>(bag->bag, rosbag::TopicQuery(tf_topics), requested_start_time, requested_end_time);
       }
     }
+
     for (auto imu_topic: imu_topics) {
       if (bag->topics.find(imu_topic) != bag->topics.end()) {
         ROS_INFO_STREAM("starting IMU view from bag " << bag->bag_file_name);
@@ -330,23 +333,22 @@ void h264_bag_playback::ReadFromBag() {
     }
   }
 
-  rosbag::View::iterator tf_iter, imu_iter;
 
   if (tf_view) {
     tf_iter = tf_view->begin();
   }
 
-  ros::Time last_tf_time(0.01);
+  last_tf_time = ros::Time(0.01);
 
   if (imu_view) {
     imu_iter = imu_view->begin();
   }
 
-  ros::Time last_imu_time(0.01);
+  last_imu_time = ros::Time(0.01);
 
-  ros::Time start_ros_time = ros::Time::now();
-  ros::Time start_imu_time = ros::Time(0);
-  ros::Time start_frame_time = ros::Time(0);
+  start_ros_time = ros::Time::now();
+  start_imu_time = ros::Time(0);
+  start_frame_time = ros::Time(0);
 
   // restrict the topics for lower priority
   //fill publishers from all
@@ -364,11 +366,21 @@ void h264_bag_playback::ReadFromBag() {
       total_message_count += bag->view->size();
   }
 
-  while (true)
-  {
+}
+
+
+
+void h264_bag_playback::SeekTime(ros::Time seek_time) {
+
+  ros::Time earliest_time;
+
+  do {
+
+    earliest_time = ros::TIME_MAX;
+
     // find the next in time order
-    ros::Time earliest_time = ros::TIME_MAX;
-    std::shared_ptr<BagContainer> earliest_iter;
+
+    std::shared_ptr <BagContainer> earliest_iter;
     bool valid_iter = false;
 
     for (auto bag: bags) {
@@ -382,23 +394,53 @@ void h264_bag_playback::ReadFromBag() {
     }
 
     if (!valid_iter)
-      break;
+      return;
 
-    rosbag::MessageInstance const m = *(earliest_iter->iter);
     earliest_iter->iter++;
+  } while (earliest_time <= seek_time);
+}
 
-    std::string const& topic = m.getTopic();
 
-    ros::Time const& time = m.getTime();
 
-    if (topic == "/tf_static" || topic == "tf_static") {
-      // static transforms are handled separately
-      continue;
+bool h264_bag_playback::ReadNextPacket() {
+  // find the next in time order
+  ros::Time earliest_time = ros::TIME_MAX;
+  std::shared_ptr<BagContainer> earliest_iter;
+  bool valid_iter = false;
+
+  for (auto bag: bags) {
+    if (bag->iter == bag->view->end())
+      return true;
+    if (bag->iter->getTime() < earliest_time) {
+      earliest_iter = bag;
+      earliest_time = bag->iter->getTime();
+      valid_iter = true;
     }
+  }
 
-    // all of the publishers should be available due to the AdvertiseTopics function
-    std::map<std::string, ros::Publisher>::iterator pub_iter = publishers.find(m.getCallerId() + topic);
-    ROS_ASSERT(pub_iter != publishers.end());
+  if (!valid_iter)
+    return false;
+
+  rosbag::MessageInstance const m = *(earliest_iter->iter);
+  earliest_iter->iter++;
+
+  std::string const& topic = m.getTopic();
+
+  ros::Time const& time = m.getTime();
+
+
+  if (topic == "/tf_static" || topic == "tf_static") {
+    // static transforms are handled separately
+    return true;
+  }
+
+  last_packet_time = time;
+
+  // all of the publishers should be available due to the AdvertiseTopics function
+  std::map<std::string, ros::Publisher>::iterator pub_iter = publishers.find(m.getCallerId() + topic);
+  ROS_ASSERT(pub_iter != publishers.end());
+
+
 
 
 // MOVE THIS INTO THE BAG VIEW OBJECT
@@ -406,247 +448,259 @@ void h264_bag_playback::ReadFromBag() {
 //      continue;
 
 
-    // For each camera info msg, check whether we have stored the calibration parameters for this camera
-    if (keep_last_of_string(topic, "/") == "camera_info") {
-      std::string camera_name = keep_last_of_string(remove_last_of_string(topic, "/"), "/");
+  // For each camera info msg, check whether we have stored the calibration parameters for this camera
+  if (keep_last_of_string(topic, "/") == "camera_info") {
+    std::string camera_name = keep_last_of_string(remove_last_of_string(topic, "/"), "/");
 
-      sensor_msgs::CameraInfo::ConstPtr cam_info_msg = m.instantiate<sensor_msgs::CameraInfo>();
-      if (cam_info_msg != NULL) {
-        sensor_msgs::CameraInfo::Ptr scaled_info_msg(new sensor_msgs::CameraInfo());
+    sensor_msgs::CameraInfo::ConstPtr cam_info_msg = m.instantiate<sensor_msgs::CameraInfo>();
+    if (cam_info_msg != NULL) {
+      sensor_msgs::CameraInfo::Ptr scaled_info_msg(new sensor_msgs::CameraInfo());
 
-        // copy the camera info parameters to the rescaled version
-        *scaled_info_msg = *cam_info_msg;
+      // copy the camera info parameters to the rescaled version
+      *scaled_info_msg = *cam_info_msg;
 
-        if (scaled_height && scaled_width) {
-          Video::ScaleCameraInfoMsg(cam_info_msg->width,
-              scaled_width,
-              cam_info_msg->height,
-              scaled_height,
-              scaled_info_msg);
-        }
-
-        if (!videos[camera_name].valid_camera_info) {
-          videos[camera_name].InitialiseCameraInfo(*scaled_info_msg);
-        }
-
-        // todo: make this go through the MessagePublisher structure
-        //MessagePublisher(pub_iter->second, scaled_info_msg);
-        CameraInfoPublisher(pub_iter->second, m, scaled_info_msg);
-
-        ros::spinOnce();
+      if (scaled_height && scaled_width) {
+        Video::ScaleCameraInfoMsg(cam_info_msg->width,
+                                  scaled_width,
+                                  cam_info_msg->height,
+                                  scaled_height,
+                                  scaled_info_msg);
       }
+
+      if (!videos[camera_name].valid_camera_info) {
+        videos[camera_name].InitialiseCameraInfo(*scaled_info_msg);
+      }
+
+      // todo: make this go through the MessagePublisher structure
+      //MessagePublisher(pub_iter->second, scaled_info_msg);
+      CameraInfoPublisher(pub_iter->second, m, scaled_info_msg);
+
+      ros::spinOnce();
     }
+  }
 
     // For each frame info msg, find the corresponding h.264 frame and publish/convert if necessary
-    else if (keep_last_of_string(topic, "/") == "frame_info") {
+  else if (keep_last_of_string(topic, "/") == "frame_info") {
 
-      // initialise the frame start time
-      if (start_frame_time == ros::Time(0)){
-        start_frame_time = time;
-      }
-
-      ros::Duration time_difference = (time - start_frame_time) - (ros::Time::now() - start_ros_time);
-
-      // hold back the playback to be realtime if limit_playback_speed parameter is set
-      if (limit_playback_speed && time_difference.toSec() > 0) {
-        time_difference.sleep();
-      }
-
-      std::string camera_name = keep_last_of_string(remove_last_of_string(topic, "/"), "/");
-
-      gmsl_frame_msg::FrameInfo::ConstPtr frame_info_msg = m.instantiate<gmsl_frame_msg::FrameInfo>();
-      if (frame_info_msg != NULL) {
-
-        ros::Time nvidia_timestamp = ros::Time((frame_info_msg->camera_timestamp) / 1000000.0, ((frame_info_msg->camera_timestamp) % 1000000) * 1000.0);
-
-        // calculate the time bias between the camera/ROS if not already done
-        if (!camera_time_bias_flag) {
-           camera_time_bias = frame_info_msg->header.stamp - nvidia_timestamp;
-           camera_time_bias_flag = true;
-        }
-
-        ros::Time adjusted_image_stamp;
-
-        if (fabs(camera_time_bias.toSec()) > 0.5) {
-          adjusted_image_stamp = nvidia_timestamp + camera_time_bias - time_offset_;
-        }
-        else {
-          adjusted_image_stamp = nvidia_timestamp - time_offset_;
-        }
-
-        // Check that someone has subscribed to this camera'frame_info_msg images
-        if (!(videos[camera_name].corrected_publisher.getNumSubscribers() == 0 &&
-            videos[camera_name].uncorrected_publisher.getNumSubscribers() == 0))
-        {
-
-          Video &current_video = videos[camera_name];
-          if (current_video.frame_counter < frame_info_msg->frame_counter) {
-
-            // try to jump forward through the video
-            if (current_video.video_device.set(CV_CAP_PROP_POS_FRAMES, frame_info_msg->frame_counter)) {
-              ROS_INFO_STREAM("tracking camera " << camera_name << " from frame " << current_video.frame_counter << " to frame " << frame_info_msg->frame_counter);
-            }
-            else {
-              ROS_ERROR_STREAM("could not move camera " << camera_name << " to frame " << frame_info_msg->frame_counter);
-            }
-
-            current_video.frame_counter = current_video.video_device.get(CV_CAP_PROP_POS_FRAMES);
-          }
-
-          // check that the frame counter aligns with the number of frames in the video
-          if (current_video.frame_counter == frame_info_msg->frame_counter) {
-
-            cv::Mat new_frame;
-
-            if (scaled_height && scaled_width) {
-              cv::Mat unresized_frame;
-              current_video.video_device >> unresized_frame;
-
-              cv::Size reduced_size = cv::Size(scaled_width, scaled_height);
-              cv::resize(unresized_frame, new_frame, reduced_size);
-            }
-            else {
-              current_video.video_device >> new_frame;
-            }
-
-            current_video.frame_counter++;
-
-            if (current_video.valid_camera_info) {
-
-              cv_bridge::CvImagePtr cv_ptr(new cv_bridge::CvImage);
-
-              // Check if someone wants the corrected (undistorted) camera images
-              if (videos[camera_name].corrected_publisher.getNumSubscribers() > 0) {
-                cv::Mat output_image;
-
-                if (current_video.camera_info_msg.distortion_model == "rational_polynomial") {
-                  cv::undistort(new_frame, output_image, current_video.camera_matrix, current_video.distance_coeffs);
-                }
-                else if (current_video.camera_info_msg.distortion_model == "equidistant") {
-                  cv::remap(new_frame, output_image, current_video.map1, current_video.map2, cv::INTER_LINEAR, cv::BORDER_CONSTANT);
-                }
-                else {
-                  ROS_INFO_STREAM("Unknown distortion model, skipping " << current_video.camera_info_msg.distortion_model);
-                  continue;
-                }
-
-                cv_ptr->image = output_image;
-                cv_ptr->encoding = "bgr8";
-                cv_ptr->header.stamp = adjusted_image_stamp;
-                cv_ptr->header.frame_id = frame_id_dict[camera_name];
-                cv_ptr->header.seq = frame_info_msg->global_counter;
-
-                auto image_message = cv_ptr->toImageMsg();
-                ImagePublisher(current_video.corrected_publisher, image_message);
-                ros::spinOnce();
-                //current_video.corrected_publisher.publish(cv_ptr->toImageMsg());
-              }
-
-              // Check if someone wants the uncorrected camera images
-              if (videos[camera_name].uncorrected_publisher.getNumSubscribers() > 0) {
-                cv_ptr->image = new_frame;
-                cv_ptr->encoding = "bgr8";
-                cv_ptr->header.stamp = adjusted_image_stamp;
-                cv_ptr->header.frame_id = frame_id_dict[camera_name];
-                cv_ptr->header.seq = frame_info_msg->global_counter;
-
-                //current_video.uncorrected_publisher.publish(cv_ptr->toImageMsg());
-                auto image_message = cv_ptr->toImageMsg();
-                ImagePublisher(current_video.uncorrected_publisher, image_message);
-                ros::spinOnce();
-              }
-            }
-          }
-        }
-      }
-
-      // repubish the frame info message
-      //pub_iter->second.publish(m);
-      MessagePublisher(pub_iter->second, m);
-      ros::spinOnce();
+    // initialise the frame start time
+    if (start_frame_time == ros::Time(0)){
+      start_frame_time = time;
     }
-    else if (topic == "vn100/imu" || topic == "/vn100/imu") {
+
+    ros::Duration time_difference = (time - start_frame_time) - (ros::Time::now() - start_ros_time);
+
+    // hold back the playback to be realtime if limit_playback_speed parameter is set
+    if (limit_playback_speed && time_difference.toSec() > 0) {
+      time_difference.sleep();
+    }
+
+    std::string camera_name = keep_last_of_string(remove_last_of_string(topic, "/"), "/");
+
+    gmsl_frame_msg::FrameInfo::ConstPtr frame_info_msg = m.instantiate<gmsl_frame_msg::FrameInfo>();
+    if (frame_info_msg != NULL) {
+
+      ros::Time nvidia_timestamp = ros::Time((frame_info_msg->camera_timestamp) / 1000000.0, ((frame_info_msg->camera_timestamp) % 1000000) * 1000.0);
+
+      // calculate the time bias between the camera/ROS if not already done
+      if (!camera_time_bias_flag) {
+        camera_time_bias = frame_info_msg->header.stamp - nvidia_timestamp;
+        camera_time_bias_flag = true;
+      }
+
+      ros::Time adjusted_image_stamp;
+
+      if (fabs(camera_time_bias.toSec()) > 0.5) {
+        adjusted_image_stamp = nvidia_timestamp + camera_time_bias - time_offset_;
+      }
+      else {
+        adjusted_image_stamp = nvidia_timestamp - time_offset_;
+      }
+
+      // Check that someone has subscribed to this camera'frame_info_msg images
+      if (!(videos[camera_name].corrected_publisher.getNumSubscribers() == 0 &&
+            videos[camera_name].uncorrected_publisher.getNumSubscribers() == 0))
+      {
+
+        Video &current_video = videos[camera_name];
+        if (current_video.frame_counter < frame_info_msg->frame_counter) {
+
+          // try to jump forward through the video
+          if (current_video.video_device.set(CV_CAP_PROP_POS_FRAMES, frame_info_msg->frame_counter)) {
+            ROS_INFO_STREAM("tracking camera " << camera_name << " from frame " << current_video.frame_counter << " to frame " << frame_info_msg->frame_counter);
+          }
+          else {
+            ROS_ERROR_STREAM("could not move camera " << camera_name << " to frame " << frame_info_msg->frame_counter);
+          }
+
+          current_video.frame_counter = current_video.video_device.get(CV_CAP_PROP_POS_FRAMES);
+        }
+
+        // check that the frame counter aligns with the number of frames in the video
+        if (current_video.frame_counter == frame_info_msg->frame_counter) {
+
+          cv::Mat new_frame;
+
+          if (scaled_height && scaled_width) {
+            cv::Mat unresized_frame;
+            current_video.video_device >> unresized_frame;
+
+            cv::Size reduced_size = cv::Size(scaled_width, scaled_height);
+            cv::resize(unresized_frame, new_frame, reduced_size);
+          }
+          else {
+            current_video.video_device >> new_frame;
+          }
+
+          current_video.frame_counter++;
+
+          if (current_video.valid_camera_info) {
+
+            cv_bridge::CvImagePtr cv_ptr(new cv_bridge::CvImage);
+
+            // Check if someone wants the corrected (undistorted) camera images
+            if (videos[camera_name].corrected_publisher.getNumSubscribers() > 0) {
+              cv::Mat output_image;
+
+              if (current_video.camera_info_msg.distortion_model == "rational_polynomial") {
+                cv::undistort(new_frame, output_image, current_video.camera_matrix, current_video.distance_coeffs);
+              }
+              else if (current_video.camera_info_msg.distortion_model == "equidistant") {
+                cv::remap(new_frame, output_image, current_video.map1, current_video.map2, cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+              }
+              else {
+                ROS_INFO_STREAM("Unknown distortion model, skipping " << current_video.camera_info_msg.distortion_model);
+                return true;
+              }
+
+              cv_ptr->image = output_image;
+              cv_ptr->encoding = "bgr8";
+              cv_ptr->header.stamp = adjusted_image_stamp;
+              cv_ptr->header.frame_id = frame_id_dict[camera_name];
+              cv_ptr->header.seq = frame_info_msg->global_counter;
+
+              auto image_message = cv_ptr->toImageMsg();
+              ImagePublisher(current_video.corrected_publisher, image_message);
+              ros::spinOnce();
+              //current_video.corrected_publisher.publish(cv_ptr->toImageMsg());
+            }
+
+            // Check if someone wants the uncorrected camera images
+            if (videos[camera_name].uncorrected_publisher.getNumSubscribers() > 0) {
+              cv_ptr->image = new_frame;
+              cv_ptr->encoding = "bgr8";
+              cv_ptr->header.stamp = adjusted_image_stamp;
+              cv_ptr->header.frame_id = frame_id_dict[camera_name];
+              cv_ptr->header.seq = frame_info_msg->global_counter;
+
+              //current_video.uncorrected_publisher.publish(cv_ptr->toImageMsg());
+              auto image_message = cv_ptr->toImageMsg();
+              ImagePublisher(current_video.uncorrected_publisher, image_message);
+              ros::spinOnce();
+            }
+          }
+        }
+      }
+    }
+
+    // repubish the frame info message
+    //pub_iter->second.publish(m);
+    MessagePublisher(pub_iter->second, m);
+    ros::spinOnce();
+  }
+  else if (topic == "vn100/imu" || topic == "/vn100/imu") {
 
 
 
-        auto msg = m.instantiate<sensor_msgs::Imu>();
-        if (msg) {
-          // compute horizon transforms from imu msg and publish them
-          geometry_msgs::TransformStamped baselink, footprint;
-          imu2horizontf(msg, baselink, footprint);
-          tf_broadcaster.sendTransform(baselink);
-          tf_broadcaster.sendTransform(footprint);
+    auto msg = m.instantiate<sensor_msgs::Imu>();
+    if (msg) {
+      // compute horizon transforms from imu msg and publish them
+      geometry_msgs::TransformStamped baselink, footprint;
+      imu2horizontf(msg, baselink, footprint);
+      tf_broadcaster.sendTransform(baselink);
+      tf_broadcaster.sendTransform(footprint);
 
-          auto header_time = msg->header.stamp;
+      auto header_time = msg->header.stamp;
 
-          // query the bag tf msgs so that transformer buffers a tf tree from (current msg time - 8s) to (current msg time + 2s)
-          // this however does not affect replay publishing of tf msgs. Tf msgs are still published at their bag times
-          if (tf_view) {
-            while (tf_iter != tf_view->end()
-                && last_tf_time < header_time + ros::Duration(2)) {
+      // query the bag tf msgs so that transformer buffers a tf tree from (current msg time - 8s) to (current msg time + 2s)
+      // this however does not affect replay publishing of tf msgs. Tf msgs are still published at their bag times
+      if (tf_view) {
+        while (tf_iter != tf_view->end()
+               && last_tf_time < header_time + ros::Duration(2)) {
 
-              // Load more transforms into the TF buffer
-              auto tf_msg = tf_iter->instantiate<tf2_msgs::TFMessage>();
-              if (tf_msg) {
-                for (const auto &transform: tf_msg->transforms) {
-                  transformer_->setTransform(transform, "zio", false);
+          // Load more transforms into the TF buffer
+          auto tf_msg = tf_iter->instantiate<tf2_msgs::TFMessage>();
+          if (tf_msg) {
+            for (const auto &transform: tf_msg->transforms) {
+              transformer_->setTransform(transform, "zio", false);
 //                  tf_broadcaster.sendTransform(transform); // for debugging tf buffer
-                  last_tf_time = transform.header.stamp;
-                }
-                tf_iter++;
-              }
+              last_tf_time = transform.header.stamp;
             }
-          }
-
-          if (imu_view) {
-            // if horizonInBuffer param is set, calculate base_link to base_link_horizon tf
-            // query the bag imu msgs so that transformer buffers horizon tf up to 2s in the future
-            while (horizonInBuffer && imu_iter != imu_view->end()
-                   && last_imu_time < header_time + ros::Duration(2)) {
-
-              auto imu_msg = imu_iter->instantiate<sensor_msgs::Imu>();
-
-              if (imu_msg) {
-
-                geometry_msgs::TransformStamped baselink, footprint;
-                imu2horizontf(imu_msg, baselink, footprint);
-
-                transformer_->setTransform(baselink, "zio", false);
-                transformer_->setTransform(footprint, "zio", false);
-
-
-                last_imu_time = imu_msg->header.stamp;
-                imu_iter++;
-              }
-            }
+            tf_iter++;
           }
         }
+      }
+
+      if (imu_view) {
+        // if horizonInBuffer param is set, calculate base_link to base_link_horizon tf
+        // query the bag imu msgs so that transformer buffers horizon tf up to 2s in the future
+        while (horizonInBuffer && imu_iter != imu_view->end()
+               && last_imu_time < header_time + ros::Duration(2)) {
+
+          auto imu_msg = imu_iter->instantiate<sensor_msgs::Imu>();
+
+          if (imu_msg) {
+
+            geometry_msgs::TransformStamped baselink, footprint;
+            imu2horizontf(imu_msg, baselink, footprint);
+
+            transformer_->setTransform(baselink, "zio", false);
+            transformer_->setTransform(footprint, "zio", false);
 
 
-        // initialise the frame start time
-        if (start_imu_time == ros::Time(0)){
-          start_imu_time = time;
+            last_imu_time = imu_msg->header.stamp;
+            imu_iter++;
+          }
         }
+      }
+    }
 
-        double sensor_time = (time - start_imu_time).toSec();
-        double playback_time = (ros::Time::now() - start_ros_time).toSec();
-        double scaled_time_difference = sensor_time - playback_time * scale_playback_speed;
+
+    // initialise the frame start time
+    if (start_imu_time == ros::Time(0)){
+      start_imu_time = time;
+    }
+
+    double sensor_time = (time - start_imu_time).toSec();
+    double playback_time = (ros::Time::now() - start_ros_time).toSec();
+    double scaled_time_difference = sensor_time - playback_time * scale_playback_speed;
 //        ros::Duration time_difference = (time - start_imu_time) - (ros::Time::now() - start_ros_time);
 
-        // hold back the playback to be realtime if limit_playback_speed parameter is set
-        if (limit_playback_speed && scaled_time_difference > 0) {
-          ros::Duration time_difference(scaled_time_difference);
-          time_difference.sleep();
-        }
-
-        MessagePublisher(pub_iter->second, m);
-        ros::spinOnce();
-    }else {
-      // publish the remaining messages
-      //pub_iter->second.publish(m);
-      MessagePublisher(pub_iter->second, m);
-      ros::spinOnce();
+    // hold back the playback to be realtime if limit_playback_speed parameter is set
+    if (limit_playback_speed && scaled_time_difference > 0) {
+      ros::Duration time_difference(scaled_time_difference);
+      time_difference.sleep();
     }
+
+    MessagePublisher(pub_iter->second, m);
+    ros::spinOnce();
+  }else {
+    // publish the remaining messages
+    //pub_iter->second.publish(m);
+    MessagePublisher(pub_iter->second, m);
+    ros::spinOnce();
+  }
+
+  return true;
+}
+
+
+void h264_bag_playback::ReadFromBag() {
+
+  OpenBags();
+
+
+  while (ReadNextPacket())
+  {
 
     // Spin once so that any other ros controls/pub/sub can be actioned
     ros::spinOnce();
