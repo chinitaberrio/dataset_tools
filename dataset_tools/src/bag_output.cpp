@@ -27,7 +27,7 @@ BagOutput::~BagOutput() {
 }
 
 
-void BagOutput::publish_stats(dataset_tools::LocaliserStats &msg, std::string topic_name){
+void BagOutput::publish_stats(dataset_msgs::LocaliserStats &msg, std::string topic_name){
   if (bag->isOpen())
     bag->write(topic_name, msg.header.stamp, msg);
 }

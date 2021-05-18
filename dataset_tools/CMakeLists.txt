@@ -9,6 +9,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   tf
+  dataset_msgs
   std_msgs
   nav_msgs
   sensor_msgs
@@ -22,25 +23,11 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 
-## Generate messages in the 'msg' folder
-add_message_files(
-        FILES
-        Observation.msg
-        Innovation.msg
-        LocaliserStats.msg
-)
-
-## Generate added messages and services with any dependencies listed here
-generate_messages(
-        DEPENDENCIES
-        std_msgs  # Or other packages containing msgs
-        dataset_tools
-)
 
 
 catkin_package(
   LIBRARIES ${PROJECT_NAME}
-  CATKIN_DEPENDS nav_msgs sensor_msgs std_msgs sensor_msgs gmsl_frame_msg rosbag
+  CATKIN_DEPENDS nav_msgs sensor_msgs std_msgs sensor_msgs gmsl_frame_msg rosbag dataset_msgs
   INCLUDE_DIRS include
 )
 
