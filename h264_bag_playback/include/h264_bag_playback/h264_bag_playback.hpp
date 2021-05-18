@@ -19,11 +19,14 @@
 #include <tf2_msgs/TFMessage.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf2_sensor_msgs/tf2_sensor_msgs.h>
+#include <tf2_ros/transform_broadcaster.h>
+
 #include <tf2/buffer_core.h>
 #include <tf2_ros/buffer.h>
 #include <tf2/LinearMath/Transform.h>
-#include <tf2_ros/transform_broadcaster.h>
 
+#include "corrected_imu_playback.hpp"
+#include "bag_static_transform_publisher.hpp"
 #include "bag_container.hpp"
 #include "video.hpp"
 
@@ -59,10 +62,11 @@ public:
   bool ReadNextPacket();
 
 
-  std::shared_ptr<rosbag::View> tf_view, imu_view;
-  rosbag::View::iterator tf_iter, imu_iter;
+  std::shared_ptr<CorrectedImuPlayback> imu_view;
+
+  std::shared_ptr<rosbag::View> tf_view;
+  rosbag::View::iterator tf_iter;
   ros::Time last_tf_time;
-  ros::Time last_imu_time;
 
 
   ros::Time start_ros_time;
@@ -112,10 +116,10 @@ protected:
   virtual void CameraInfoPublisher(ros::Publisher &publisher, const rosbag::MessageInstance &message,
                                    const sensor_msgs::CameraInfoConstPtr &scaled_info_msg);
 
-  virtual void StaticTfPublisher(rosbag::Bag &bag, bool do_publish=true);
+  //virtual void StaticTfPublisher(rosbag::Bag &bag, bool do_publish=true);
 
-  void imu2horizontf(sensor_msgs::Imu::Ptr &imu_msg, geometry_msgs::TransformStamped &baselink,
-                                   geometry_msgs::TransformStamped &footprint);
+//  void imu2horizontf(sensor_msgs::Imu::Ptr &imu_msg, geometry_msgs::TransformStamped &baselink,
+//                                   geometry_msgs::TransformStamped &footprint);
 
   image_transport::ImageTransport image_transport;
 
@@ -146,6 +150,9 @@ protected:
   tf2_ros::TransformBroadcaster tf_broadcaster;
 
   uint32_t total_message_count;
+
+    BagStaticTransformBroadcaster tf_static;
+
 };
 
 }

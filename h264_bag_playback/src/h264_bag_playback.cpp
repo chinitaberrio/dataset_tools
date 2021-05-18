@@ -19,6 +19,7 @@
 
 #include <tf2_ros/static_transform_broadcaster.h>
 
+#include "corrected_imu_playback.hpp"
 #include "helper_functions.hpp"
 #include "video.hpp"
 
@@ -104,44 +105,30 @@ void h264_bag_playback::init_playback() {
     private_nh.param("output_width", scaled_width, 0);
     private_nh.param("output_height", scaled_height, 0);
 
-    private_nh.param("scale_playback_speed", scale_playback_speed, 1.0);
-
-
     if (scaled_height && scaled_width) {
-      ROS_INFO_STREAM("output images will be scaled to " << scaled_width << "x" << scaled_height);
+      ROS_INFO_STREAM("Output images will be scaled to " << scaled_width << "x" << scaled_height);
     }
     else {
-      ROS_INFO_STREAM("output images will NOT be scaled");
+      ROS_INFO_STREAM("Output images will NOT be scaled");
     }
 
-    // parameter to limit the speed of playback to realtime
 
+    // parameters to scale, or limit the speed of playback to realtime
+    private_nh.param("scale_playback_speed", scale_playback_speed, 1.0);
     private_nh.param("limit_playback_speed", limit_playback_speed, true);
 
     // determine the bag file to playback
     private_nh.getParam("bag_file", bag_file_name);
 
     if (bag_file_name.empty()) {
-      ROS_INFO_STREAM("Could not find bagfile " << bag_file_name);
+      ROS_INFO_STREAM("Bag file name parameter is missing " << bag_file_name);
       return;
     }
-
-    /*
-    // Attempt to open the bag file
-    rosbag::Bag bag;
-    bag.open(bag_file_name);
-
-    if (!bag.isOpen()) {
-      ROS_INFO_STREAM("Could not OPEN bagfile " << bag_file_name);
-      return;
-    }
-     */
 
     // Attempt to open the bag file
     bags.push_back(std::make_shared<BagContainer>());
     if (!bags.back()->Open(bag_file_name))
       return;
-
 
     // determine the file prefixes and initialise each camera
     std::string file_prefix = remove_last_of_string(bag_file_name, ".");
@@ -206,19 +193,20 @@ void h264_bag_playback::init_playback() {
       ROS_INFO_STREAM("No time correction parameters available for this dataset");
     }
 
+
     // assume the "main" bag covers the most important times
     rosbag::View overall_view(bags.front()->bag);
 
     bag_start_time = overall_view.getBeginTime();
     bag_end_time = overall_view.getEndTime();
-    auto bag_duration = (bag_end_time-bag_start_time).toSec();
 
+    auto bag_duration = (bag_end_time-bag_start_time).toSec();
 
     ROS_INFO_STREAM("Bag start time " << boost::posix_time::to_iso_extended_string(bag_start_time.toBoost()));
     ROS_INFO_STREAM("Bag end time " << boost::posix_time::to_iso_extended_string(bag_end_time.toBoost()));
     ROS_INFO_STREAM("Bag duration: " << bag_duration << " seconds");
 
-
+    // determine which part of the playback is requested by the user
     std::string start_time_param_string, end_time_param_string;
     float start_percentage, end_percentage;
     private_nh.getParam("time_start", start_time_param_string);
@@ -238,7 +226,7 @@ void h264_bag_playback::init_playback() {
       ROS_INFO_STREAM("Requested start time " << start_time_param_string << " is " << requested_start_time);
     }
     catch (...) {
-      ROS_INFO_STREAM("Couldn't read start time string " << start_time_param_string);
+      ROS_INFO_STREAM("No alternative start time is requested " << start_time_param_string);
     }
 
     try {
@@ -247,8 +235,9 @@ void h264_bag_playback::init_playback() {
       ROS_INFO_STREAM("Requested end time " << end_time_param_string << " is " << requested_end_time);
     }
     catch (...) {
-      ROS_INFO_STREAM("Couldn't read end time string " << end_time_param_string);
+      ROS_INFO_STREAM("No alternative end time is requested " << end_time_param_string);
     }
+
 
     if(requested_start_time == bag_start_time && requested_end_time == bag_end_time){
         if(!(start_percentage>=0 && start_percentage<100)){
@@ -283,16 +272,14 @@ void h264_bag_playback::init_playback() {
     // tf static should be published by static tf broadcaster
     // so that if bag isn't played from begining, static will still be published
     for (auto bag: bags) {
-      StaticTfPublisher(bag->bag);
+      //StaticTfPublisher(bag->bag);
+      tf_static.StaticTfPublisher(bag->bag, true, transformer_);
     }
     //StaticTfPublisher(bags.front()->bag);
 
     last_packet_time = requested_start_time;
 
     private_nh.param<bool>("horizon_in_buffer", horizonInBuffer, false);
-
-
-
 }
 
 
@@ -328,7 +315,7 @@ void h264_bag_playback::OpenBags() {
     for (auto imu_topic: imu_topics) {
       if (bag->topics.find(imu_topic) != bag->topics.end()) {
         ROS_INFO_STREAM("starting IMU view from bag " << bag->bag_file_name);
-        imu_view = std::make_shared<rosbag::View>(bag->bag, rosbag::TopicQuery(imu_topics), requested_start_time, requested_end_time);
+        imu_view = std::make_shared<CorrectedImuPlayback>(bag->bag, rosbag::TopicQuery(imu_topics), requested_start_time, requested_end_time);
       }
     }
   }
@@ -341,10 +328,9 @@ void h264_bag_playback::OpenBags() {
   last_tf_time = ros::Time(0.01);
 
   if (imu_view) {
-    imu_iter = imu_view->begin();
+    imu_view->ResetPlayback();
   }
 
-  last_imu_time = ros::Time(0.01);
 
   start_ros_time = ros::Time::now();
   start_imu_time = ros::Time(0);
@@ -615,7 +601,7 @@ bool h264_bag_playback::ReadNextPacket() {
     if (msg) {
       // compute horizon transforms from imu msg and publish them
       geometry_msgs::TransformStamped baselink, footprint;
-      imu2horizontf(msg, baselink, footprint);
+      CorrectedImuPlayback::imu2horizontf(msg, baselink, footprint);
       tf_broadcaster.sendTransform(baselink);
       tf_broadcaster.sendTransform(footprint);
 
@@ -640,27 +626,10 @@ bool h264_bag_playback::ReadNextPacket() {
         }
       }
 
-      if (imu_view) {
-        // if horizonInBuffer param is set, calculate base_link to base_link_horizon tf
-        // query the bag imu msgs so that transformer buffers horizon tf up to 2s in the future
-        while (horizonInBuffer && imu_iter != imu_view->end()
-               && last_imu_time < header_time + ros::Duration(2)) {
+      if (imu_view && horizonInBuffer) {
 
-          auto imu_msg = imu_iter->instantiate<sensor_msgs::Imu>();
+        imu_view->CalculateHorizon(transformer_, header_time);
 
-          if (imu_msg) {
-
-            geometry_msgs::TransformStamped baselink, footprint;
-            imu2horizontf(imu_msg, baselink, footprint);
-
-            transformer_->setTransform(baselink, "zio", false);
-            transformer_->setTransform(footprint, "zio", false);
-
-
-            last_imu_time = imu_msg->header.stamp;
-            imu_iter++;
-          }
-        }
       }
     }
 
@@ -713,31 +682,6 @@ void h264_bag_playback::ReadFromBag() {
   //bags.back()->close();
 }
 
-void
-h264_bag_playback::imu2horizontf(sensor_msgs::Imu::Ptr &imu_msg, geometry_msgs::TransformStamped &baselink,
-                                 geometry_msgs::TransformStamped &footprint) {
-    if (imu_msg) {
-      // calculate horizon to base tf, and push to tf buffer
-      tf2::Transform imu_tf;
-      tf2::Quaternion q1(imu_msg->orientation.x, imu_msg->orientation.y, imu_msg->orientation.z, imu_msg->orientation.w);
-      imu_tf.setRotation(q1);
-      double roll, pitch, yaw;
-      imu_tf.getBasis().getRPY(roll, pitch, yaw);
-
-      tf2::Quaternion q;
-      q.setRPY(-roll, -pitch, 0.);
-
-      baselink.transform.rotation.x = footprint.transform.rotation.x = q.x();
-      baselink.transform.rotation.y = footprint.transform.rotation.y = q.y();
-      baselink.transform.rotation.z = footprint.transform.rotation.z = q.z();
-      baselink.transform.rotation.w = footprint.transform.rotation.w = q.w();
-      baselink.header.stamp = footprint.header.stamp = imu_msg->header.stamp;
-      baselink.header.frame_id = "base_link";
-      footprint.header.frame_id = "base_footprint";
-      baselink.child_frame_id = "base_link_horizon";
-      footprint.child_frame_id = "base_footprint_horizon";
-    }
-}
 
 void
 h264_bag_playback::CameraInfoPublisher(ros::Publisher &publisher, const rosbag::MessageInstance &message,
@@ -757,88 +701,6 @@ h264_bag_playback::ImagePublisher(image_transport::Publisher &publisher, const s
   publisher.publish(message);
 }
 
-/**
- * @brief h264_bag_playback::StaticTfPublisher extract and publish /tf_static and store in member tf buffer transformer_
- * only reads in the first 10 /tf_static messages and discard all msgs after 10, to prevent a node spaming /tf_static msgs.
- * @param bag bag that contains static tf
- * @param do_publish if want to publish /tf_static defaut to true.
- */
-void h264_bag_playback::StaticTfPublisher(rosbag::Bag &bag, bool do_publish) {
-
-  static tf2_ros::StaticTransformBroadcaster static_broadcaster;
-
-  std::vector<std::string> topics;
-
-  topics.push_back(std::string("tf_static"));
-  topics.push_back(std::string("/tf_static"));
-  rosbag::View view(bag, rosbag::TopicQuery(topics));
-  int n_static_tf = 0;
-  for(rosbag::MessageInstance const &m: view) {
-    const auto tf = m.instantiate<tf2_msgs::TFMessage>();
-    if (do_publish) {
-      static_broadcaster.sendTransform(tf->transforms);
-    }
-
-    for (const auto &transform: tf->transforms) {
-
-      if(transform.child_frame_id == "velodyne_front_link"){
-          // replace base->velodyne for testing
-
-          tf2::Transform odom_tf;
-          tf2::fromMsg(transform.transform, odom_tf);
-          double r,p,yaw;
-          odom_tf.getBasis().getRPY(r,p,yaw);
-          ROS_ERROR_STREAM("original velodyne tf yaw "<<yaw << " pitch " << p << " roll " << r);
-
-        geometry_msgs::TransformStamped transformStamped;
-        transformStamped.header.stamp = ros::Time::now();
-        transformStamped.header.frame_id = "base_link" ;
-        transformStamped.child_frame_id = "velodyne_front_link";
-
-        transformStamped.transform.translation.x = transform.transform.translation.x;
-        transformStamped.transform.translation.y = transform.transform.translation.y;
-        transformStamped.transform.translation.z = transform.transform.translation.z;
-
-        float new_roll, new_pitch, new_yaw;
-        private_nh.param<float>("new_roll", new_roll, 0.);
-        private_nh.param<float>("new_pitch", new_pitch, 0.);
-        private_nh.param<float>("new_yaw", new_yaw, 0.);
-        ROS_ERROR_STREAM("offseting velodyne tf yaw "<<new_yaw << " pitch " << new_pitch << " roll " << new_roll);
-
-        new_yaw += yaw;
-        new_pitch += p;
-        new_roll += r;
-
-        tf2::Quaternion quat;
-        quat.setRPY(new_roll, new_pitch, new_yaw);
-
-        transformStamped.transform.rotation.x = quat.x();
-        transformStamped.transform.rotation.y = quat.y();
-        transformStamped.transform.rotation.z = quat.z();
-        transformStamped.transform.rotation.w = quat.w();
-
-        static_broadcaster.sendTransform(transformStamped);
-        transformer_->setTransform(transformStamped, "zio", true);
-
-        tf2::Transform odom_tf_2;
-        tf2::fromMsg(transformStamped.transform, odom_tf_2);
-        odom_tf_2.getBasis().getRPY(r,p,yaw);
-        ROS_ERROR_STREAM("velodyne tf now reads yaw "<<yaw << " pitch " << p << " roll " << r);
-
-      }else if(transform.child_frame_id == "utm"){
-        continue;
-      }else{
-        transformer_->setTransform(transform, "zio", true);
-      }
-
-    }
-    n_static_tf++;
-    if(n_static_tf>10)
-        break;
-
-  }
-    ROS_INFO_STREAM("Loaded static TF tree data");
-}
 
 void
 h264_bag_playback::AdvertiseTopics(std::shared_ptr<rosbag::View> view) {
