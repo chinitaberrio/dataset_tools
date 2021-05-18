@@ -1,7 +1,6 @@
 #ifndef BUS_STOP_PANEL_H
 #define BUS_STOP_PANEL_H
 
-#include <py_trees_msgs/Behaviour.h>
 #include <ros/ros.h>
 
 #include <QFileDialog>
@@ -13,23 +12,10 @@
 #include <QFrame>
 #include <QSlider>
 #include <QMouseEvent>
-#include <QSvgWidget>
-#include <QSvgRenderer>
 
 #include <QLineEdit>
 #include <QListWidget>
 #include <QPushButton>
-
-#include <QGraphicsView>
-#include <QGraphicsScene>
-
-#include <QGraphicsRectItem>
-#include <QGraphicsSceneMouseEvent>
-
-#include "QBusStopScene.h"
-
-
-#include <geometry_msgs/PoseStamped.h>
 
 #include <h264_bag_playback/h264_bag_playback.hpp>
 
@@ -39,10 +25,6 @@ class DatasetThread : public QThread
 
 
   Q_OBJECT
-
-
-
-
 
   void run() {
         QString result;
@@ -112,11 +94,11 @@ public:
 };
 
 
-class BusStopPanel: public QFrame
+class DatasetPanel: public QFrame
 {
     Q_OBJECT
 public:
-    BusStopPanel( QWidget* parent = 0 );
+    DatasetPanel( QWidget* parent = 0 );
 
     DatasetThread *workerThread;
 
@@ -132,21 +114,12 @@ protected Q_SLOTS:
     void sliderReleased();
 
 
-    // Request the set of trajectories from the service and update the list
-    void RefreshTrajectoryList();
-
-    void BusMapPressed(QString stop_name);
-
     void PollROS();
-
 
     void selectBagFile();
 
 
 protected:
-
-    // Monitor the state machine status so we can change button colours, etc
-    void StatusCallback(const py_trees_msgs::BehaviourConstPtr& msg);
 
     QPushButton* start_button_;
     QPushButton* pause_button_;
@@ -158,20 +131,8 @@ protected:
 
     QSlider *slider;
 
-    QBusStopView* graphics_view;
-    QBusStopScene* graphics_scene;
-
     // The ROS node handle.
     ros::NodeHandle nh_;
-    ros::Publisher start_msg_pub;
-    ros::Publisher stop_msg_pub;
-    ros::Publisher bus_stop_name_pub;
-    ros::Subscriber bus_stop_state_machine_sub;
-    ros::ServiceClient bus_stops_service_client_;
-
-    std::map<std::string, geometry_msgs::PoseStamped> destination_map;
-    std::vector<std::pair<std::string, std::string>> connections;
-
 
 };
 

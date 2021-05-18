@@ -1,5 +1,5 @@
 
-#include "bus_stop_panel.h"
+#include "dataset_panel.h"
 
 #include <QtGui>
 #include <QApplication>
@@ -10,11 +10,11 @@
 
 int main(int argv, char **args)
 {
-  ros::init(argv, args, "QtBusStopPanel");
+  ros::init(argv, args, "DatasetPlayback");
 
   QApplication app(argv, args);
   
-  BusStopPanel *textEdit = new BusStopPanel;
+  DatasetPanel *textEdit = new DatasetPanel;
   
   QVBoxLayout *layout = new QVBoxLayout;
   layout->addWidget(textEdit);

@@ -11,21 +11,12 @@
 
   <buildtool_depend>catkin</buildtool_depend>
 
-  <depend>nav_msgs</depend>
-  <depend>py_trees_msgs</depend>
-  <depend>sensor_msgs</depend>
-
   <build_depend>qtbase5-dev</build_depend>
-  <depend>graphviz</depend>
   <depend>h264_bag_playback</depend>
   <depend>dataset_tools</depend>
   <depend>libqt5-core</depend>
   <depend>libqt5-gui</depend>
-  <depend>libqt5-svg-dev</depend>
   <depend>libqt5-widgets</depend>
   <depend>roscpp</depend>
-  <depend>libgraphviz</depend>
-
-  <depend>zio_navigation_msgs</depend>
 
 </package>
