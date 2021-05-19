@@ -6,8 +6,8 @@
     <param name="bag_file" value="$(arg bag_file_name)"/>
     <param name="horizon_in_buffer" value="true" />
     <param name="scale_playback_speed" value="1.0" />
-    <param name="percentage_start" value="50" />
-    <param name="percentage_end" value="55" />
+    <param name="percentage_start" value="0" />
+    <param name="percentage_end" value="100" />
 <!--
     <param name="output_height" value="480" />
     <param name="output_width" value="640" />
