@@ -27,6 +27,27 @@ Video::ScaleCameraInfoMsg(int original_width,
 }
 
 
+bool Video::SeekFrame(uint32_t requested_frame) {
+  if (frame_counter < requested_frame) {
+
+    // try to jump forward through the video
+    if (video_device.set(CV_CAP_PROP_POS_FRAMES, requested_frame)) {
+      ROS_INFO_STREAM("tracking video " << file_name << " from frame " << frame_counter << " to frame " << requested_frame);
+    }
+    else {
+      ROS_ERROR_STREAM("could not move video " << file_name << " to frame " << requested_frame);
+    }
+
+    frame_counter = video_device.get(CV_CAP_PROP_POS_FRAMES);
+  }
+
+  // see if the frame was successfully found
+  if (frame_counter == requested_frame)
+    return true;
+
+  return false;
+}
+
 
 void Video::InitialiseCameraInfo(sensor_msgs::CameraInfo &camera_info) {
 
@@ -66,6 +87,7 @@ void Video::InitialiseCameraInfo(sensor_msgs::CameraInfo &camera_info) {
 
   valid_camera_info = true;
 }
+
 
 
 bool Video::InitialiseVideo(std::string camera_name, std::string video_filename) {

@@ -28,15 +28,20 @@ public:
                           int scaled_height,
                           sensor_msgs::CameraInfo::Ptr &scaled_info_msg);
 
+
+  bool SeekFrame(uint32_t requested_frame);
+
   cv::Mat camera_matrix, distance_coeffs, map1, map2;
 
   std::string file_name;
+
   sensor_msgs::CameraInfo camera_info_msg;
+
   cv::VideoCapture video_device;
   uint32_t frame_counter;
+
   image_transport::Publisher corrected_publisher;
   image_transport::Publisher uncorrected_publisher;
-
 };
 
 

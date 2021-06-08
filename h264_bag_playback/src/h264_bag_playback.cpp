@@ -30,6 +30,7 @@
 //  this has been done because there is a problem in ros melodic where
 //  the rosbag library has a conflict with the compression functions
 //  of the opencv library causing a run time seg fault.
+
 int main(int argc, char **argv) {
 
   //Initialize Node and handles
@@ -37,7 +38,7 @@ int main(int argc, char **argv) {
   ros::NodeHandle n;
 
   dataset_toolkit::h264_bag_playback bag_tools;
-  //bag_tools.bypass_init();
+
   bag_tools.init_playback();
   bag_tools.ReadFromBag();
 
@@ -69,32 +70,6 @@ void h264_bag_playback::timerCallback(const ros::TimerEvent& event) {
   ReadFromBag();
 }
 
-/*
-void
-h264_bag_playback::ScaleCameraInfoMsg(int original_width,
-                                      int scaled_width,
-                                      int original_height,
-                                      int scaled_height,
-                                      sensor_msgs::CameraInfo::Ptr &scaled_info_msg) {
-
-  double scale_y = static_cast<double>(scaled_height) / original_height;
-  double scale_x = static_cast<double>(scaled_width) / original_width;
-
-  scaled_info_msg->height = scaled_height;
-  scaled_info_msg->width = scaled_width;
-
-  scaled_info_msg->K[0] = scaled_info_msg->K[0] * scale_x;  // fx
-  scaled_info_msg->K[2] = scaled_info_msg->K[2] * scale_x;  // cx
-  scaled_info_msg->K[4] = scaled_info_msg->K[4] * scale_y;  // fy
-  scaled_info_msg->K[5] = scaled_info_msg->K[5] * scale_y;  // cy
-
-  scaled_info_msg->P[0] = scaled_info_msg->P[0] * scale_x;  // fx
-  scaled_info_msg->P[2] = scaled_info_msg->P[2] * scale_x;  // cx
-  scaled_info_msg->P[3] = scaled_info_msg->P[3] * scale_x;  // T
-  scaled_info_msg->P[5] = scaled_info_msg->P[5] * scale_y;  // fy
-  scaled_info_msg->P[6] = scaled_info_msg->P[6] * scale_y;  // cy
-}
-*/
 
 
 void h264_bag_playback::init_playback() {
@@ -117,6 +92,7 @@ void h264_bag_playback::init_playback() {
     private_nh.param("scale_playback_speed", scale_playback_speed, 1.0);
     private_nh.param("limit_playback_speed", limit_playback_speed, true);
 
+
     // determine the bag file to playback
     private_nh.getParam("bag_file", bag_file_name);
 
@@ -125,15 +101,18 @@ void h264_bag_playback::init_playback() {
       return;
     }
 
+
     // Attempt to open the bag file
     bags.push_back(std::make_shared<BagContainer>());
     if (!bags.back()->Open(bag_file_name))
       return;
 
+
     // determine the file prefixes and initialise each camera
     std::string file_prefix = remove_last_of_string(bag_file_name, ".");
     std::string dataset_name = keep_last_of_string(file_prefix, "/");
-    ROS_INFO_STREAM("Reading from bag: " << bag_file_name << " dataset name " << dataset_name);
+    ROS_INFO_STREAM("Reading from bag: " << bag_file_name);
+    ROS_INFO_STREAM("Dataset name " << dataset_name);
 
     std::vector<std::string> file_list;
     get_files_pattern(file_prefix + "*.mp4", file_list);
@@ -141,7 +120,8 @@ void h264_bag_playback::init_playback() {
     std::vector<std::string> extensions_list;
     get_files_pattern(file_prefix + ".*.bag", extensions_list);
     for (auto extension_name: extensions_list) {
-      std::cout << "EXTENSIONS " << extension_name << std::endl;
+      ROS_INFO_STREAM("Loading extension: " << extension_name);
+
       auto new_bag = std::make_shared<BagContainer>();
       bags.push_back(new_bag);
       if (!new_bag->Open(extension_name))
@@ -149,34 +129,36 @@ void h264_bag_playback::init_playback() {
 
       // for all the other bags, if there is a topic with the same name, delete it from the list
       //  the last opened bags have priority
-
       for (auto bag: bags) {
         // if it is not this bag
         if (bag != new_bag) {
           for (auto topic_name: new_bag->topics){
             if (bag->topics.find(topic_name) != bag->topics.end() && topic_name != "/tf_static") {
               bag->topics.erase(topic_name);
-              ROS_INFO_STREAM ("replacing " << topic_name << " from bag " << bag->bag_file_name << " as it exists in bag " << new_bag->bag_file_name);
+              ROS_INFO_STREAM ("Replacing " << topic_name << " from bag " << bag->bag_file_name << " as it exists in bag " << new_bag->bag_file_name);
             }
           }
         }
       }
     }
 
-  // make a video object for each video file
+
+    // make a video object for each video file
     for (auto file_name: file_list) {
+      // extract the camera name from the filename
       std::string camera_name = keep_last_of_string(remove_last_of_string(file_name, "."), "-");
 
       Video new_video;
       videos[camera_name] = new_video;
       if (videos[camera_name].InitialiseVideo(camera_name, file_name)){
-        ROS_INFO_STREAM("including video file: " << file_name << " for camera " << camera_name);
+        ROS_INFO_STREAM("Loading " << file_name << " for camera " << camera_name);
       }
       else {
-        ROS_INFO_STREAM("FAIL to open video file: " << file_name << " for camera " << camera_name);
+        ROS_ERROR_STREAM("FAILED to open video file: " << file_name << " for camera " << camera_name);
         return;
       }
     }
+
 
     // determine whether to apply a time bias correction
     // (some datasets have an offset between the nvidia computer time and the ROS time)
@@ -211,11 +193,15 @@ void h264_bag_playback::init_playback() {
     float start_percentage, end_percentage;
     private_nh.getParam("time_start", start_time_param_string);
     private_nh.getParam("time_end", end_time_param_string);
-    private_nh.param<float>("percentage_start", start_percentage, 0); // -1.1 is a random placeholder value to denote no param received
+    private_nh.param<float>("percentage_start", start_percentage, 0);
     private_nh.param<float>("percentage_end", end_percentage, 100);
 
-    ROS_INFO_STREAM("Requested start percentage " << start_percentage );
-    ROS_INFO_STREAM("Requested end percentage " << end_percentage );
+    if (start_percentage == 0 && end_percentage == 100) {
+      //ROS_INFO_STREAM("No requests for the playback of a percentage of the dataset");
+    }
+    else {
+      ROS_INFO_STREAM("Requested playback from " << start_percentage << "\% to " << end_percentage << "\%");
+    }
 
     requested_start_time = bag_start_time;
     requested_end_time = bag_end_time;
@@ -226,7 +212,7 @@ void h264_bag_playback::init_playback() {
       ROS_INFO_STREAM("Requested start time " << start_time_param_string << " is " << requested_start_time);
     }
     catch (...) {
-      ROS_INFO_STREAM("No alternative start time is requested " << start_time_param_string);
+      //ROS_INFO_STREAM("No requests for a different start time " << start_time_param_string);
     }
 
     try {
@@ -235,10 +221,10 @@ void h264_bag_playback::init_playback() {
       ROS_INFO_STREAM("Requested end time " << end_time_param_string << " is " << requested_end_time);
     }
     catch (...) {
-      ROS_INFO_STREAM("No alternative end time is requested " << end_time_param_string);
+      //ROS_INFO_STREAM("No alternative end time is requested " << end_time_param_string);
     }
 
-
+    // make sure the requested times fit inside the bag times
     if(requested_start_time == bag_start_time && requested_end_time == bag_end_time){
         if(!(start_percentage>=0 && start_percentage<100)){
             start_percentage = 0;
@@ -257,28 +243,30 @@ void h264_bag_playback::init_playback() {
 
 
     if(requested_start_time == bag_start_time){
-      ROS_INFO_STREAM("starting from the beginning: " << start_time_param_string);
-    }else{
-      ROS_INFO_STREAM("Playback start from : " << boost::posix_time::to_iso_extended_string(requested_start_time.toBoost()));
+      ROS_INFO_STREAM("Playback starts from the beginning: " << boost::posix_time::to_iso_extended_string(requested_start_time.toBoost()));
+    } else {
+      ROS_INFO_STREAM("Playback starts from: " << boost::posix_time::to_iso_extended_string(requested_start_time.toBoost()));
     }
+
     if(requested_end_time == bag_end_time){
-      ROS_INFO_STREAM("running through to the end of the bag: " << end_time_param_string);
-    }else{
-      ROS_INFO_STREAM("Play until : " << boost::posix_time::to_iso_extended_string(requested_end_time.toBoost()));
+      ROS_INFO_STREAM("Playback runs until the end: " << boost::posix_time::to_iso_extended_string(requested_end_time.toBoost()));
+    } else {
+      ROS_INFO_STREAM("Playback runs until: " << boost::posix_time::to_iso_extended_string(requested_end_time.toBoost()));
     }
-    ROS_INFO_STREAM("Playback duration : " << requested_end_time-requested_start_time << " seconds");
+
+    ROS_INFO_STREAM("Playback duration: " << requested_end_time-requested_start_time << " seconds");
 
 
     // tf static should be published by static tf broadcaster
     // so that if bag isn't played from begining, static will still be published
     for (auto bag: bags) {
-      //StaticTfPublisher(bag->bag);
       tf_static.StaticTfPublisher(bag->bag, true, transformer_);
     }
-    //StaticTfPublisher(bags.front()->bag);
 
+    // initialise the last packet time stored value
     last_packet_time = requested_start_time;
 
+    // check if the user wants to publish the horizon transform
     private_nh.param<bool>("horizon_in_buffer", horizonInBuffer, false);
 }
 
@@ -385,6 +373,7 @@ void h264_bag_playback::SeekTime(ros::Time seek_time) {
     earliest_iter->iter++;
   } while (earliest_time <= seek_time);
 }
+
 
 
 
@@ -508,21 +497,9 @@ bool h264_bag_playback::ReadNextPacket() {
       {
 
         Video &current_video = videos[camera_name];
-        if (current_video.frame_counter < frame_info_msg->frame_counter) {
-
-          // try to jump forward through the video
-          if (current_video.video_device.set(CV_CAP_PROP_POS_FRAMES, frame_info_msg->frame_counter)) {
-            ROS_INFO_STREAM("tracking camera " << camera_name << " from frame " << current_video.frame_counter << " to frame " << frame_info_msg->frame_counter);
-          }
-          else {
-            ROS_ERROR_STREAM("could not move camera " << camera_name << " to frame " << frame_info_msg->frame_counter);
-          }
-
-          current_video.frame_counter = current_video.video_device.get(CV_CAP_PROP_POS_FRAMES);
-        }
 
         // check that the frame counter aligns with the number of frames in the video
-        if (current_video.frame_counter == frame_info_msg->frame_counter) {
+        if (current_video.SeekFrame(frame_info_msg->frame_counter)) {
 
           cv::Mat new_frame;
 
@@ -589,19 +566,17 @@ bool h264_bag_playback::ReadNextPacket() {
     }
 
     // repubish the frame info message
-    //pub_iter->second.publish(m);
     MessagePublisher(pub_iter->second, m);
     ros::spinOnce();
   }
   else if (topic == "vn100/imu" || topic == "/vn100/imu") {
-
-
 
     auto msg = m.instantiate<sensor_msgs::Imu>();
     if (msg) {
       // compute horizon transforms from imu msg and publish them
       geometry_msgs::TransformStamped baselink, footprint;
       CorrectedImuPlayback::imu2horizontf(msg, baselink, footprint);
+
       tf_broadcaster.sendTransform(baselink);
       tf_broadcaster.sendTransform(footprint);
 
@@ -642,7 +617,6 @@ bool h264_bag_playback::ReadNextPacket() {
     double sensor_time = (time - start_imu_time).toSec();
     double playback_time = (ros::Time::now() - start_ros_time).toSec();
     double scaled_time_difference = sensor_time - playback_time * scale_playback_speed;
-//        ros::Duration time_difference = (time - start_imu_time) - (ros::Time::now() - start_ros_time);
 
     // hold back the playback to be realtime if limit_playback_speed parameter is set
     if (limit_playback_speed && scaled_time_difference > 0) {
