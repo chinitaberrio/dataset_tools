@@ -20,9 +20,8 @@ public:
       ros::Time const &  	start_time = ros::TIME_MIN,
       ros::Time const &  	end_time = ros::TIME_MAX) :
 
-      last_imu_time(ros::Time(0.01)),
-
-      rosbag::View(bag, query, start_time, end_time) {
+      rosbag::View(bag, query, start_time, end_time),
+      last_imu_time(ros::Time(0.01)){
 
   }
 
@@ -83,9 +82,9 @@ public:
     }
   }
 
-  rosbag::View::iterator imu_iter;
   ros::Time last_imu_time;
 
+  rosbag::View::iterator imu_iter;
 };
 
 
