@@ -378,7 +378,7 @@ bool h264_bag_playback::ReadNextPacket() {
 
   for (auto bag: bags) {
     if (bag->iter == bag->view->end())
-      return true;
+      continue; //return false;
     if (bag->iter->getTime() < earliest_time) {
       earliest_iter = bag;
       earliest_time = bag->iter->getTime();
