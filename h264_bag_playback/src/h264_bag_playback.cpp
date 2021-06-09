@@ -256,6 +256,8 @@ void h264_bag_playback::init_playback() {
 
     ROS_INFO_STREAM("Playback duration: " << requested_end_time-requested_start_time << " seconds");
 
+    time_sync_real = ros::Time::now();
+    time_sync_playback = requested_start_time;
 
     // tf static should be published by static tf broadcaster
     // so that if bag isn't played from begining, static will still be published
@@ -268,27 +270,23 @@ void h264_bag_playback::init_playback() {
 
     // check if the user wants to publish the horizon transform
     private_nh.param<bool>("horizon_in_buffer", horizonInBuffer, false);
+
 }
 
 
 
 void h264_bag_playback::OpenBags() {
 
-  // generate the views
+  // generate the views and advertise each of the topics to publish
   for (auto bag: bags) {
     bag->view = std::make_shared<rosbag::View>(bag->bag, rosbag::TopicQuery(std::vector<std::string>(bag->topics.begin(), bag->topics.end())), requested_start_time, requested_end_time);
     bag->iter = bag->view->begin();
     AdvertiseTopics(bag->view);
   }
 
-  // create a view and advertise each of the topics to publish
-  //rosbag::View view(bags.front()->bag, requested_start_time, requested_end_time);
-  //AdvertiseTopics(view);
-
   // creat a tf bag view object so that we can view future tf msgs
   std::vector<std::string> tf_topics{"tf", "/tf"};
   std::vector<std::string> imu_topics{"vn100/imu", "/vn100/imu"};
-
 
 
   for (auto bag: bags) {
@@ -308,7 +306,6 @@ void h264_bag_playback::OpenBags() {
     }
   }
 
-
   if (tf_view) {
     tf_iter = tf_view->begin();
   }
@@ -319,40 +316,32 @@ void h264_bag_playback::OpenBags() {
     imu_view->ResetPlayback();
   }
 
-
-  start_ros_time = ros::Time::now();
-  start_imu_time = ros::Time(0);
-  start_frame_time = ros::Time(0);
-
-  // restrict the topics for lower priority
-  //fill publishers from all
-  // make iters list
-  //find soonest iter
-  // use
-  // test for end (remove finished iters from list?
-  //close all
-
-  // for each message in the rosbag
-//  for(rosbag::MessageInstance const m: view)
-
+  // calculate the total number of messages
   for (auto bag: bags) {
     if (bag->view)
       total_message_count += bag->view->size();
   }
-
 }
 
 
 
 void h264_bag_playback::SeekTime(ros::Time seek_time) {
 
-  ros::Time earliest_time;
+  ros::Time earliest_time = ros::TIME_MAX;
 
+  // if the seek time is less than the last_packet_time, reset the iterators to the beginning
+  if (seek_time < last_packet_time) {
+    for (auto bag: bags) {
+      bag->iter = bag->view->begin();
+      ROS_INFO_STREAM("restarting view on bag " << bag->bag_file_name);
+    }
+  }
+
+  last_packet_time = seek_time;
+
+  // find the next message in time order
   do {
-
     earliest_time = ros::TIME_MAX;
-
-    // find the next in time order
 
     std::shared_ptr <BagContainer> earliest_iter;
     bool valid_iter = false;
@@ -360,6 +349,7 @@ void h264_bag_playback::SeekTime(ros::Time seek_time) {
     for (auto bag: bags) {
       if (bag->iter == bag->view->end())
         continue;
+
       if (bag->iter->getTime() < earliest_time) {
         earliest_iter = bag;
         earliest_time = bag->iter->getTime();
@@ -371,6 +361,7 @@ void h264_bag_playback::SeekTime(ros::Time seek_time) {
       return;
 
     earliest_iter->iter++;
+
   } while (earliest_time <= seek_time);
 }
 
@@ -378,8 +369,10 @@ void h264_bag_playback::SeekTime(ros::Time seek_time) {
 
 
 bool h264_bag_playback::ReadNextPacket() {
+
   // find the next in time order
   ros::Time earliest_time = ros::TIME_MAX;
+
   std::shared_ptr<BagContainer> earliest_iter;
   bool valid_iter = false;
 
@@ -403,7 +396,6 @@ bool h264_bag_playback::ReadNextPacket() {
 
   ros::Time const& time = m.getTime();
 
-
   if (topic == "/tf_static" || topic == "tf_static") {
     // static transforms are handled separately
     return true;
@@ -414,13 +406,6 @@ bool h264_bag_playback::ReadNextPacket() {
   // all of the publishers should be available due to the AdvertiseTopics function
   std::map<std::string, ros::Publisher>::iterator pub_iter = publishers.find(m.getCallerId() + topic);
   ROS_ASSERT(pub_iter != publishers.end());
-
-
-
-
-// MOVE THIS INTO THE BAG VIEW OBJECT
-//    if (time < playback_start || time > playback_end)
-//      continue;
 
 
   // For each camera info msg, check whether we have stored the calibration parameters for this camera
@@ -454,20 +439,8 @@ bool h264_bag_playback::ReadNextPacket() {
     }
   }
 
-    // For each frame info msg, find the corresponding h.264 frame and publish/convert if necessary
+  // For each frame info msg, find the corresponding h.264 frame and publish/convert if necessary
   else if (keep_last_of_string(topic, "/") == "frame_info") {
-
-    // initialise the frame start time
-    if (start_frame_time == ros::Time(0)){
-      start_frame_time = time;
-    }
-
-    ros::Duration time_difference = (time - start_frame_time) - (ros::Time::now() - start_ros_time);
-
-    // hold back the playback to be realtime if limit_playback_speed parameter is set
-    if (limit_playback_speed && time_difference.toSec() > 0) {
-      time_difference.sleep();
-    }
 
     std::string camera_name = keep_last_of_string(remove_last_of_string(topic, "/"), "/");
 
@@ -572,6 +545,7 @@ bool h264_bag_playback::ReadNextPacket() {
   else if (topic == "vn100/imu" || topic == "/vn100/imu") {
 
     auto msg = m.instantiate<sensor_msgs::Imu>();
+
     if (msg) {
       // compute horizon transforms from imu msg and publish them
       geometry_msgs::TransformStamped baselink, footprint;
@@ -590,10 +564,10 @@ bool h264_bag_playback::ReadNextPacket() {
 
           // Load more transforms into the TF buffer
           auto tf_msg = tf_iter->instantiate<tf2_msgs::TFMessage>();
+
           if (tf_msg) {
             for (const auto &transform: tf_msg->transforms) {
               transformer_->setTransform(transform, "zio", false);
-//                  tf_broadcaster.sendTransform(transform); // for debugging tf buffer
               last_tf_time = transform.header.stamp;
             }
             tf_iter++;
@@ -602,35 +576,58 @@ bool h264_bag_playback::ReadNextPacket() {
       }
 
       if (imu_view && horizonInBuffer) {
-
         imu_view->CalculateHorizon(transformer_, header_time);
-
       }
-    }
-
-
-    // initialise the frame start time
-    if (start_imu_time == ros::Time(0)){
-      start_imu_time = time;
-    }
-
-    double sensor_time = (time - start_imu_time).toSec();
-    double playback_time = (ros::Time::now() - start_ros_time).toSec();
-    double scaled_time_difference = sensor_time - playback_time * scale_playback_speed;
-
-    // hold back the playback to be realtime if limit_playback_speed parameter is set
-    if (limit_playback_speed && scaled_time_difference > 0) {
-      ros::Duration time_difference(scaled_time_difference);
-      time_difference.sleep();
     }
 
     MessagePublisher(pub_iter->second, m);
     ros::spinOnce();
-  }else {
+  }
+  else {
     // publish the remaining messages
     //pub_iter->second.publish(m);
     MessagePublisher(pub_iter->second, m);
     ros::spinOnce();
+  }
+
+
+  if (limit_playback_speed && (topic == "tf" || topic == "/tf")) {
+
+    if (ros::Time::now() - time_sync_latest > ros::Duration(.5)){
+      // assume there has been a pause of the playback, the sync needs to be reset
+      time_sync_real = ros::Time::now();
+      time_sync_latest = ros::Time::now();
+      time_sync_playback = time;
+
+      ROS_INFO_STREAM("Real time re-sync now[" << ros::Time::now() <<"] last sync[" << time_sync_latest << "]");
+    }
+    else {
+
+      double playback_time = (time - time_sync_playback).toSec();
+      double real_time = (ros::Time::now() - time_sync_real).toSec();
+
+      double scaled_time_difference = playback_time - real_time * scale_playback_speed;
+
+      time_sync_latest = ros::Time::now();
+
+      ros::Duration time_difference(scaled_time_difference);
+
+      if (time_difference > ros::Duration(.5)) {
+        // assume things are out of sync, reset the playback timer
+        time_sync_real = ros::Time::now();
+        time_sync_playback = time;
+
+        time_difference = ros::Duration(0.);
+
+        ROS_INFO_STREAM("Playback re-sync");
+      }
+
+      // hold back the playback to be realtime if limit_playback_speed parameter is set
+      //if (limit_playback_speed && scaled_time_difference > 0) {
+      if (scaled_time_difference > 0) {
+        time_difference.sleep();
+      }
+    }
   }
 
   return true;
@@ -641,10 +638,8 @@ void h264_bag_playback::ReadFromBag() {
 
   OpenBags();
 
-
   while (ReadNextPacket())
   {
-
     // Spin once so that any other ros controls/pub/sub can be actioned
     ros::spinOnce();
 
@@ -653,7 +648,6 @@ void h264_bag_playback::ReadFromBag() {
   }
 
   ROS_INFO_STREAM("completed playback");
-  //bags.back()->close();
 }
 
 
@@ -700,11 +694,10 @@ h264_bag_playback::AdvertiseTopics(std::shared_ptr<rosbag::View> view) {
 
       ros::Publisher pub = public_nh.advertise(opts);
       publishers.insert(publishers.begin(), std::pair<std::string, ros::Publisher>(callerid_topic, pub));
-
-//      pub_iter = publishers.find(callerid_topic); // this line seems to be doing nothing here
     }
   }
 }
+
 
   PLUGINLIB_EXPORT_CLASS(dataset_toolkit::h264_bag_playback, nodelet::Nodelet);
 

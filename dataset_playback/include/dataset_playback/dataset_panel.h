@@ -9,13 +9,14 @@
 #include <QLineEdit>
 
 #include <QThread>
-#include <QFrame>
+#include <QThread>
 #include <QSlider>
 #include <QMouseEvent>
 
 #include <QLineEdit>
 #include <QListWidget>
 #include <QPushButton>
+#include <QCheckBox>
 
 #include <h264_bag_playback/h264_bag_playback.hpp>
 
@@ -50,7 +51,7 @@ class DatasetThread : public QThread
             }
 
             if (current_state == PLAYBACK_SEEK) {
-              if (seek_time < bag_playback.last_packet_time) {
+              /*if (seek_time < bag_playback.last_packet_time) {
                 // need to reload the data as the iterator only goes one way
                 bag_playback.init_playback();
 
@@ -60,6 +61,7 @@ class DatasetThread : public QThread
 
                 bag_playback.OpenBags();
               }
+               */
               bag_playback.SeekTime(seek_time);
               current_state = PLAYBACK_START;
             }
@@ -113,6 +115,8 @@ protected Q_SLOTS:
     void sliderMoved(int new_value);
     void sliderReleased();
 
+    void changePlaybackRealtime();
+
 
     void PollROS();
 
@@ -125,6 +129,8 @@ protected:
     QPushButton* pause_button_;
     QPushButton* stop_button_;
     QPushButton* file_select_button_;
+
+    QCheckBox* playback_realtime_;
 
     QTextEdit *statusText;
     QLineEdit *currentTimeText;

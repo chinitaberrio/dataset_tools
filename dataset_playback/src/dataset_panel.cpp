@@ -29,6 +29,7 @@ DatasetPanel::DatasetPanel( QWidget* parent )
   nh_ = ros::NodeHandle("/");
 
     file_select_button_ = new QPushButton( "Select file");
+    file_select_button_->setFixedHeight(100);
 
     slider = new QSlider(Qt::Horizontal);
     slider->setRange(0, 999);
@@ -37,6 +38,8 @@ DatasetPanel::DatasetPanel( QWidget* parent )
     start_button_ = new QPushButton( "Play");
     pause_button_ = new QPushButton( "Pause");
     stop_button_ = new QPushButton( "Stop");
+
+    playback_realtime_ = new QCheckBox("Playback in real-time");
 
     //start_button_->setEnabled(false);
     start_button_->setFixedHeight(100);
@@ -55,6 +58,9 @@ DatasetPanel::DatasetPanel( QWidget* parent )
     stop_button_->setFont(font);
     stop_button_->setStyleSheet("");
 
+    file_select_button_->setFont(font);
+    file_select_button_->setStyleSheet("");
+
     statusText = new QTextEdit();
     currentTimeText = new QLineEdit();
 
@@ -63,6 +69,8 @@ DatasetPanel::DatasetPanel( QWidget* parent )
     button_layout->addWidget( pause_button_ );
     button_layout->addWidget( stop_button_ );
 
+
+
     // Lay out the fields
     QVBoxLayout* main_layout = new QVBoxLayout;
 
@@ -70,6 +78,8 @@ DatasetPanel::DatasetPanel( QWidget* parent )
     main_layout->addWidget(file_select_button_);
 
     main_layout->addWidget(statusText);
+
+    main_layout->addWidget(playback_realtime_);
 
     main_layout->addWidget(slider);
     main_layout->addWidget(currentTimeText);
@@ -80,6 +90,8 @@ DatasetPanel::DatasetPanel( QWidget* parent )
     connect( start_button_, SIGNAL( pressed() ), this, SLOT( startPressed() ));
     connect( pause_button_, SIGNAL( pressed() ), this, SLOT( pausePressed() ));
     connect( stop_button_, SIGNAL( pressed() ), this, SLOT( stopPressed() ));
+
+    connect( playback_realtime_, SIGNAL( pressed() ), this, SLOT( changePlaybackRealtime() ));
 
     connect( slider, SIGNAL(sliderPressed()), this, SLOT(sliderPressed()));
     connect( slider, SIGNAL(sliderMoved(int)), this, SLOT(sliderMoved(int)));
@@ -93,8 +105,11 @@ DatasetPanel::DatasetPanel( QWidget* parent )
 
 
 void DatasetPanel::selectBagFile(){
-  QString fileName = QFileDialog::getOpenFileName(this, tr("Open dataset file"), "/media/stew", tr("Bag Files (*.bag)"));
+  QString fileName = QFileDialog::getOpenFileName(this, tr("Open dataset file"), "/media/stew/datasets/conversions/", tr("Bag Files (*.bag)"));
   std::cout << fileName.toStdString() << std::endl;
+
+  // reset GUI
+  slider->setValue(0.);
 
   workerThread = new DatasetThread();//this);
 
@@ -137,6 +152,8 @@ void DatasetPanel::selectBagFile(){
 
   currentTimeText->setText(QDateTime::fromSecsSinceEpoch(current_time).toString());
 
+  playback_realtime_->setChecked(workerThread->bag_playback.limit_playback_speed);
+  statusText->append("playback time scaled to " + QString::number(workerThread->bag_playback.scale_playback_speed));
 }
 
 
@@ -184,6 +201,7 @@ void DatasetPanel::sliderReleased() {
       ros::spinOnce();
     }
 
+    currentTimeText->setText("finished seek");
   }
 }
 
@@ -202,6 +220,15 @@ void DatasetPanel::PollROS() {
     currentTimeText->setText(QDateTime::fromSecsSinceEpoch(current_time).toString());
   }
   ros::spinOnce();
+}
+
+
+void DatasetPanel::changePlaybackRealtime(){
+  if (workerThread) {
+    workerThread->bag_playback.limit_playback_speed = !playback_realtime_->isChecked();
+    //workerThread->bag_playback.scale_playback_speed = 1.;
+    ROS_INFO_STREAM("is checked " << workerThread->bag_playback.limit_playback_speed);
+  }
 }
 
 

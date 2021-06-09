@@ -39,8 +39,11 @@ namespace dataset_toolkit
 class h264_bag_playback : public nodelet::Nodelet
 {
 public:
+
   h264_bag_playback();
+
   void init_playback();
+
   void bypass_init() {
     this->onInit();
   }
@@ -49,8 +52,10 @@ public:
 
   void timerCallback(const ros::TimerEvent& event);
 
+  // convenience function to open, then block while reading the bag one message at a time
   void ReadFromBag();
 
+  // jump forwards or backwards to a specific time
   void SeekTime(ros::Time seek_time);
 
   std::shared_ptr<tf2_ros::Buffer> transformer_;
@@ -61,20 +66,16 @@ public:
   void OpenBags();
   bool ReadNextPacket();
 
-
   std::shared_ptr<CorrectedImuPlayback> imu_view;
-
   std::shared_ptr<rosbag::View> tf_view;
+
   rosbag::View::iterator tf_iter;
   ros::Time last_tf_time;
 
-
-  ros::Time start_ros_time;
-  ros::Time start_imu_time;
-  ros::Time start_frame_time;
-
+  // used to determine when the message time from latest read message
   ros::Time last_packet_time;
 
+  // the requested bag start/end time (based on the params for percentage or specific start/end times)
   ros::Time requested_start_time;
   ros::Time requested_end_time;
 
@@ -83,17 +84,20 @@ public:
   // A video object for each video file being read
   std::map<std::string, Video> videos;
 
-
+  // determine whether the playback is real-time (with optional scaling) or as fast as possible
   bool limit_playback_speed;
   double scale_playback_speed = 1.0;
+
+  // times used to synchronise the playback
+  ros::Time time_sync_real;
+  ros::Time time_sync_playback;
+  ros::Time time_sync_latest;
 
 
 
 protected:
 
   virtual void onInit();
-
-//  void BagReader(std::string file_name);
 
   void AdvertiseTopics(std::shared_ptr<rosbag::View> view);
 
@@ -116,42 +120,33 @@ protected:
   virtual void CameraInfoPublisher(ros::Publisher &publisher, const rosbag::MessageInstance &message,
                                    const sensor_msgs::CameraInfoConstPtr &scaled_info_msg);
 
-  //virtual void StaticTfPublisher(rosbag::Bag &bag, bool do_publish=true);
-
-//  void imu2horizontf(sensor_msgs::Imu::Ptr &imu_msg, geometry_msgs::TransformStamped &baselink,
-//                                   geometry_msgs::TransformStamped &footprint);
 
   image_transport::ImageTransport image_transport;
 
-
-
-
-
-
-    std::string bag_file_name;
+  std::string bag_file_name;
   int scaled_width;
   int scaled_height;
 
   ros::Duration time_offset_;
 
-//  std::list<std::shared_ptr<rosbag::Bag>> bags;
+  // the start and end times from the main bag (before user params are applied)
+  ros::Time bag_start_time, bag_end_time;
 
-
-    ros::Time bag_start_time, bag_end_time;
-
-    // parameters for selecting part of the dataset
+  // parameters for selecting part of the dataset
   ros::Time playback_start, playback_end;
   ros::Duration playback_duration;
 
   bool camera_time_bias_flag = false;
   ros::Duration camera_time_bias;
 
+  // determine whether to calculate and publish the horizon transform
   bool horizonInBuffer;
   tf2_ros::TransformBroadcaster tf_broadcaster;
 
+  // store the total number of messages
   uint32_t total_message_count;
 
-    BagStaticTransformBroadcaster tf_static;
+  BagStaticTransformBroadcaster tf_static;
 
 };
 

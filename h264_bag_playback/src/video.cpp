@@ -28,7 +28,7 @@ Video::ScaleCameraInfoMsg(int original_width,
 
 
 bool Video::SeekFrame(uint32_t requested_frame) {
-  if (frame_counter < requested_frame) {
+  if (frame_counter != requested_frame) {
 
     // try to jump forward through the video
     if (video_device.set(CV_CAP_PROP_POS_FRAMES, requested_frame)) {
