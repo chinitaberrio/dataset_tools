@@ -9,6 +9,7 @@ find_package(catkin REQUIRED COMPONENTS nodelet
 	tf2_ros
 	tf2_sensor_msgs
 	image_transport
+	dataset_msgs
 	std_msgs
 	cv_bridge
 	nav_msgs
@@ -30,6 +31,7 @@ catkin_package(
 	rosbag_storage
 	gmsl_frame_msg
 	image_transport
+	dataset_msgs
 	std_msgs
 	tf2_ros
 	tf2_sensor_msgs

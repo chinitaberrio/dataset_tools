@@ -13,6 +13,7 @@
   <depend>std_msgs</depend>
   <depend>nav_msgs</depend>
   <depend>sensor_msgs</depend>
+  <depend>dataset_msgs</depend>
   <depend>rosbag</depend>
   <depend>rosbag_storage</depend>
   <depend>cv_bridge</depend>

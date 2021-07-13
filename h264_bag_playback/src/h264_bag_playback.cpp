@@ -71,7 +71,6 @@ void h264_bag_playback::timerCallback(const ros::TimerEvent& event) {
 }
 
 
-
 void h264_bag_playback::init_playback() {
 
     // parameter to scale the size of the images from the h264 playback
@@ -116,6 +115,8 @@ void h264_bag_playback::init_playback() {
 
     std::vector<std::string> file_list;
     get_files_pattern(file_prefix + "*.mp4", file_list);
+
+    bag_writer.SetPrefix(file_prefix);
 
     std::vector<std::string> extensions_list;
     get_files_pattern(file_prefix + ".*.bag", extensions_list);
@@ -275,6 +276,13 @@ void h264_bag_playback::init_playback() {
 
 
 
+void h264_bag_playback::CloseBags() {
+  bag_writer.CloseBags();
+}
+
+
+
+
 void h264_bag_playback::OpenBags() {
 
   // generate the views and advertise each of the topics to publish
@@ -283,6 +291,38 @@ void h264_bag_playback::OpenBags() {
     bag->iter = bag->view->begin();
     AdvertiseTopics(bag->view);
   }
+
+
+  int dataset_event_count = 0;
+
+  // find all of the dataset events
+  for (auto bag: bags) {
+    std::list<std::string> event_topics;
+
+    for (auto topic: bag->topics) {
+      if (topic.find("/event/") != std::string::npos) {
+        //std::cout << "looking at topics " << topic << " in bag " << bag->bag_file_name << std::endl;
+        event_topics.push_back(topic);
+      }
+    }
+
+    rosbag::View event_view(bag->bag, rosbag::TopicQuery(std::vector<std::string>(event_topics.begin(), event_topics.end())));
+
+    for (auto message: event_view) {
+      dataset_msgs::DatasetEvent::ConstPtr event_msg = message.instantiate<dataset_msgs::DatasetEvent>();
+      if (event_msg) {
+        if (dataset_events.find(message.getTopic()) == dataset_events.end()) {
+          dataset_events[message.getTopic()] = std::list<dataset_msgs::DatasetEvent::ConstPtr>();
+        }
+        dataset_events[message.getTopic()].push_back(event_msg);
+        dataset_event_count++;
+        //std::cout << "including message " << event_msg->event_description << " from topic " << message.getTopic() << std::endl;
+      }
+    }
+  }
+
+  ROS_INFO_STREAM("Loaded " << dataset_event_count << " events");
+
 
   // creat a tf bag view object so that we can view future tf msgs
   std::vector<std::string> tf_topics{"tf", "/tf"};
@@ -542,7 +582,7 @@ bool h264_bag_playback::ReadNextPacket() {
     MessagePublisher(pub_iter->second, m);
     ros::spinOnce();
   }
-  else if (topic == "vn100/imu" || topic == "/vn100/imu") {
+  else if (topic == "vn100/imu" || topic == "/vn100/imu" || topic == "xsens/IMU" || topic == "/xsens/IMU") {
 
     auto msg = m.instantiate<sensor_msgs::Imu>();
 

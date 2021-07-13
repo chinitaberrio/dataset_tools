@@ -1,6 +1,7 @@
   #include <gtest/gtest.h>
 
   #include <iostream>
+  #include "boost/date_time/posix_time/posix_time.hpp"
 
   #include <math.h>
 
@@ -16,6 +17,7 @@
         : h264_bag_playback() {
 
       private_nh.setParam("bag_file", bag_file);
+      init_playback();
     }
 
 
@@ -55,7 +57,12 @@
     // clear params
     playback.private_nh.setParam("time_start", "");
     playback.private_nh.setParam("time_end", "");
+    playback.private_nh.setParam("percentage_start", 0.);
+    playback.private_nh.setParam("percentage_end", 100.);
+
     playback.init_playback();
+
+
     playback.ReadFromBag();
 
     for(auto elem : playback.stats){
@@ -182,7 +189,6 @@
   EXPECT_LT(playback.stats["/velodyne_points"], 9);
 
   }
-
 
   int main(int argc, char **argv){
     testing::InitGoogleTest(&argc, argv);
