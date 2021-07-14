@@ -2,6 +2,7 @@
 #define H264_BAG_PLAYBACK_HEADER
 
 #include <iostream>
+#include <algorithm>
 
 #include <pluginlib/class_list_macros.h>
 #include <nodelet/nodelet.h>
@@ -26,6 +27,8 @@
 #include <tf2/LinearMath/Transform.h>
 
 #include <dataset_msgs/DatasetEvent.h>
+
+#include <boost/algorithm/string.hpp>
 
 #include "corrected_imu_playback.hpp"
 #include "bag_static_transform_publisher.hpp"
@@ -55,6 +58,9 @@ namespace dataset_toolkit {
       for (auto bag: output_bags)
         bag.second->close();
 
+      for (auto video: output_videos)
+        video.second.release();
+
       output_bags.clear();
     }
 
@@ -77,6 +83,67 @@ namespace dataset_toolkit {
       return true;
     }
 
+    bool WriteToVideo(std::string &bag_name, std::string &topic_name, ros::Time &msg_time, sensor_msgs::Image::Ptr image) {
+
+      auto video_instance = output_videos.find(topic_name);
+
+      cv_bridge::CvImagePtr cv_ptr;
+      try
+      {
+        cv_ptr = cv_bridge::toCvCopy(image, sensor_msgs::image_encodings::BGR8);
+      }
+      catch (cv_bridge::Exception& e)
+      {
+        ROS_ERROR("cv_bridge exception: %s", e.what());
+        return false;
+      }
+
+      if (video_instance == output_videos.end()) {
+
+
+        std::vector<std::string> topic_parts;
+        boost::split(topic_parts, topic_name, boost::is_any_of("/"));
+
+        //_gmsl_A2_image_color_colored_pointcloud
+        std::string video_file_name = prefix + "-" + topic_parts[2] + ".mp4";
+
+        //std::string renamed_topic = topic_name;
+        //std::replace(renamed_topic.begin(), renamed_topic.end(), '/', '_');
+        ROS_INFO_STREAM("Opening video for " << video_file_name);
+        //return false;
+
+        output_videos[topic_name] = cv::VideoWriter();
+        message_count[topic_name] = 1;
+        output_videos[topic_name].open(video_file_name, cv::VideoWriter::fourcc('H','2','6','4'), 30, cv::Size(cv_ptr->image.cols,cv_ptr->image.rows));
+
+        if(!output_videos[topic_name].isOpened()) { // check if we succeeded
+          ROS_INFO_STREAM("could not open video file: " << video_file_name);
+          return false;
+        }
+
+        output_videos[topic_name].write(cv_ptr->image);
+      }
+      else {
+        message_count[topic_name] += 1;
+        output_videos[topic_name].write(cv_ptr->image);
+      }
+
+      gmsl_frame_msg::FrameInfo::Ptr frame_info = boost::make_shared<gmsl_frame_msg::FrameInfo>();
+      frame_info->header.stamp = msg_time;
+      frame_info->ros_timestamp = msg_time;
+      frame_info->frame_counter = message_count[topic_name];
+      frame_info->global_counter = message_count[topic_name];
+      frame_info->camera_timestamp = msg_time.toNSec();
+
+      topic_name += "/frame_info";
+      this->WriteMessage(bag_name, topic_name, msg_time, frame_info);
+
+      return true;
+    }
+
+
+//    sensor_msgs::Image::Ptr
+
     //write compressed image
     /*
 void OpenCVConnector::PublishJpeg(uint8_t* image_compressed, uint32_t image_compressed_size) {
@@ -94,11 +161,15 @@ c_img_msg.format = "jpeg";
 
 pub_comp.publish(  c_img_msg  );
 
-/* camera_info.roi.do_rectify=true;
+ camera_info.roi.do_rectify=true;
 pubCamInfo.publish(  camera_info ); */
 
   private:
     std::map<std::string, std::shared_ptr<rosbag::Bag>> output_bags;
+
+    std::map<std::string, cv::VideoWriter> output_videos;
+    std::map<std::string, uint32_t> message_count;
+
     std::string prefix;
   };
 

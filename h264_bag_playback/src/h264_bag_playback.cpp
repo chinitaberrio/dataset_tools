@@ -256,7 +256,6 @@ void h264_bag_playback::init_playback() {
     }
 
     ROS_INFO_STREAM("Playback duration: " << requested_end_time-requested_start_time << " seconds");
-
     time_sync_real = ros::Time::now();
     time_sync_playback = requested_start_time;
 
@@ -331,6 +330,8 @@ void h264_bag_playback::OpenBags() {
 
   for (auto bag: bags) {
 
+    std::cout << "1 " << bag->bag_file_name << std::endl;
+
     for (auto tf_topic: tf_topics) {
       if (bag->topics.find(tf_topic) != bag->topics.end()) {
         ROS_INFO_STREAM("starting TF view from bag " << bag->bag_file_name);
@@ -345,19 +346,23 @@ void h264_bag_playback::OpenBags() {
       }
     }
   }
+  std::cout << "A" << std::endl;
 
   if (tf_view) {
     tf_iter = tf_view->begin();
   }
+  std::cout << "B" << std::endl;
 
   last_tf_time = ros::Time(0.01);
 
   if (imu_view) {
     imu_view->ResetPlayback();
   }
+  std::cout << "C" << std::endl;
 
   // calculate the total number of messages
   for (auto bag: bags) {
+    std::cout << "D " << total_message_count << std::endl;
     if (bag->view)
       total_message_count += bag->view->size();
   }
