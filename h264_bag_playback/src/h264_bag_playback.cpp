@@ -534,12 +534,13 @@ bool h264_bag_playback::ReadNextPacket() {
 
           current_video.frame_counter++;
 
-          if (current_video.valid_camera_info) {
+          //if (current_video.valid_camera_info) {
 
-            cv_bridge::CvImagePtr cv_ptr(new cv_bridge::CvImage);
 
             // Check if someone wants the corrected (undistorted) camera images
-            if (videos[camera_name].corrected_publisher.getNumSubscribers() > 0) {
+            if (current_video.valid_camera_info && videos[camera_name].corrected_publisher.getNumSubscribers() > 0) {
+              cv_bridge::CvImagePtr cv_ptr(new cv_bridge::CvImage);
+
               cv::Mat output_image;
 
               if (current_video.camera_info_msg.distortion_model == "rational_polynomial") {
@@ -567,6 +568,8 @@ bool h264_bag_playback::ReadNextPacket() {
 
             // Check if someone wants the uncorrected camera images
             if (videos[camera_name].uncorrected_publisher.getNumSubscribers() > 0) {
+              cv_bridge::CvImagePtr cv_ptr(new cv_bridge::CvImage);
+
               cv_ptr->image = new_frame;
               cv_ptr->encoding = "bgr8";
               cv_ptr->header.stamp = adjusted_image_stamp;
@@ -578,7 +581,7 @@ bool h264_bag_playback::ReadNextPacket() {
               ImagePublisher(current_video.uncorrected_publisher, image_message);
               ros::spinOnce();
             }
-          }
+          //}
         }
       }
     }
