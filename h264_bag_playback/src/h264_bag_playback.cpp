@@ -51,7 +51,7 @@ namespace dataset_toolkit
 
 
 h264_bag_playback::h264_bag_playback() :
-        transformer_(std::make_shared<tf2_ros::Buffer>()),
+        transformer_(std::make_shared<tf2_ros::Buffer>(ros::Duration(200.))),
         horizonInBuffer(false),
         private_nh("~"),
         image_transport(public_nh),
@@ -346,23 +346,19 @@ void h264_bag_playback::OpenBags() {
       }
     }
   }
-  std::cout << "A" << std::endl;
 
   if (tf_view) {
     tf_iter = tf_view->begin();
   }
-  std::cout << "B" << std::endl;
 
   last_tf_time = ros::Time(0.01);
 
   if (imu_view) {
     imu_view->ResetPlayback();
   }
-  std::cout << "C" << std::endl;
 
   // calculate the total number of messages
   for (auto bag: bags) {
-    std::cout << "D " << total_message_count << std::endl;
     if (bag->view)
       total_message_count += bag->view->size();
   }
@@ -492,22 +488,32 @@ bool h264_bag_playback::ReadNextPacket() {
     gmsl_frame_msg::FrameInfo::ConstPtr frame_info_msg = m.instantiate<gmsl_frame_msg::FrameInfo>();
     if (frame_info_msg != NULL) {
 
-      ros::Time nvidia_timestamp = ros::Time((frame_info_msg->camera_timestamp) / 1000000.0, ((frame_info_msg->camera_timestamp) % 1000000) * 1000.0);
-
-      // calculate the time bias between the camera/ROS if not already done
-      if (!camera_time_bias_flag) {
-        camera_time_bias = frame_info_msg->header.stamp - nvidia_timestamp;
-        camera_time_bias_flag = true;
-      }
-
       ros::Time adjusted_image_stamp;
 
-      if (fabs(camera_time_bias.toSec()) > 0.5) {
-        adjusted_image_stamp = nvidia_timestamp + camera_time_bias - time_offset_;
+      if (frame_info_msg->camera_timestamp != 0) {
+        ros::Time nvidia_timestamp = ros::Time((frame_info_msg->camera_timestamp) / 1000000.0, ((frame_info_msg->camera_timestamp) % 1000000) * 1000.0);
+
+        // calculate the time bias between the camera/ROS if not already done
+        if (!camera_time_bias_flag) {
+          camera_time_bias = frame_info_msg->header.stamp - nvidia_timestamp;
+
+          camera_time_bias_flag = true;
+        }
+
+  ////      std::cout << "calculating time bias for " << camera_name << " as " << camera_time_bias << ", " << frame_info_msg->header.stamp.toNSec() << ", " <<  nvidia_timestamp.toNSec() << std::endl;
+
+
+        if (fabs(camera_time_bias.toSec()) > 0.5) {
+          adjusted_image_stamp = nvidia_timestamp + camera_time_bias - time_offset_;
+        }
+        else {
+          adjusted_image_stamp = nvidia_timestamp - time_offset_;
+        }
       }
       else {
-        adjusted_image_stamp = nvidia_timestamp - time_offset_;
+        adjusted_image_stamp = frame_info_msg->header.stamp;
       }
+
 
       // Check that someone has subscribed to this camera'frame_info_msg images
       if (!(videos[camera_name].corrected_publisher.getNumSubscribers() == 0 &&
@@ -608,7 +614,7 @@ bool h264_bag_playback::ReadNextPacket() {
       // this however does not affect replay publishing of tf msgs. Tf msgs are still published at their bag times
       if (tf_view) {
         while (tf_iter != tf_view->end()
-               && last_tf_time < header_time + ros::Duration(2)) {
+               && last_tf_time < header_time + ros::Duration(12.)) {
 
           // Load more transforms into the TF buffer
           auto tf_msg = tf_iter->instantiate<tf2_msgs::TFMessage>();

@@ -83,7 +83,8 @@ namespace dataset_toolkit {
       return true;
     }
 
-    bool WriteToVideo(std::string &bag_name, std::string &topic_name, ros::Time &msg_time, sensor_msgs::Image::Ptr image) {
+    bool WriteToVideo(std::string &bag_name, std::string &topic_name, ros::Time &msg_time, sensor_msgs::Image::Ptr image,
+                      sensor_msgs::CameraInfoPtr camera_info_msg = NULL) {
 
       auto video_instance = output_videos.find(topic_name);
 
@@ -114,7 +115,8 @@ namespace dataset_toolkit {
 
         output_videos[topic_name] = cv::VideoWriter();
         message_count[topic_name] = 1;
-        output_videos[topic_name].open(video_file_name, cv::VideoWriter::fourcc('H','2','6','4'), 30, cv::Size(cv_ptr->image.cols,cv_ptr->image.rows));
+        //output_videos[topic_name].open(video_file_name, cv::VideoWriter::fourcc('H','2','6','4'), 30, cv::Size(cv_ptr->image.cols,cv_ptr->image.rows));
+        output_videos[topic_name].open(video_file_name, cv::VideoWriter::fourcc('X','V','I','D'), 30, cv::Size(cv_ptr->image.cols,cv_ptr->image.rows));
 
         if(!output_videos[topic_name].isOpened()) { // check if we succeeded
           ROS_INFO_STREAM("could not open video file: " << video_file_name);
@@ -133,10 +135,18 @@ namespace dataset_toolkit {
       frame_info->ros_timestamp = msg_time;
       frame_info->frame_counter = message_count[topic_name];
       frame_info->global_counter = message_count[topic_name];
-      frame_info->camera_timestamp = msg_time.toNSec();
+      frame_info->camera_timestamp = 0;
 
-      topic_name += "/frame_info";
-      this->WriteMessage(bag_name, topic_name, msg_time, frame_info);
+//      ros::Time nvidia_timestamp = ros::Time((frame_info_msg->camera_timestamp) / 1000000.0, ((frame_info_msg->camera_timestamp) % 1000000) * 1000.0);
+
+      std::string frame_info_topic = topic_name + "/frame_info";
+      std::string camera_info_topic = topic_name + "/camera_info";
+
+      this->WriteMessage(bag_name, frame_info_topic, msg_time, frame_info);
+
+      if (camera_info_msg) {
+        this->WriteMessage(bag_name, camera_info_topic, msg_time, camera_info_msg);
+      }
 
       return true;
     }
