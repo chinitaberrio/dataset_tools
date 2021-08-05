@@ -20,6 +20,8 @@
 
 #include <h264_bag_playback/h264_bag_playback.hpp>
 
+#include <QTreeView>
+#include "treemodel.h"
 
 class DatasetThread : public QThread
 {
@@ -66,8 +68,13 @@ class DatasetThread : public QThread
               current_state = PLAYBACK_START;
             }
 
+            if (!bag_playback.ReadNextPacket()) {
+              current_state = PLAYBACK_PAUSE;
+            }
 
-        } while (bag_playback.ReadNextPacket());
+        } while (true);
+
+        bag_playback.CloseBags();
 
         emit resultReady(result);
     }
@@ -110,6 +117,7 @@ protected Q_SLOTS:
     void startPressed();
     void stopPressed();
     void pausePressed();
+    void convertPressed();
 
     void sliderPressed();
     void sliderMoved(int new_value);
@@ -117,6 +125,10 @@ protected Q_SLOTS:
 
     void changePlaybackRealtime();
 
+    void OnClickedTree(QModelIndex clicked_item);
+
+  void recordEvent();
+  void saveEventsToFile();
 
     void PollROS();
 
@@ -125,14 +137,28 @@ protected Q_SLOTS:
 
 protected:
 
+
+  void addEventToCategory(std::string category, dataset_msgs::DatasetEvent::ConstPtr event);
+
     QPushButton* start_button_;
     QPushButton* pause_button_;
     QPushButton* stop_button_;
+  QPushButton* convert_button_;
     QPushButton* file_select_button_;
 
     QCheckBox* playback_realtime_;
 
-    QTextEdit *statusText;
+    QTreeView* tree_view_;
+    TreeModel* tree_model;
+
+
+  QLineEdit *eventText;
+  QLineEdit *currentEventTimeText;
+  QPushButton* recordEventButton;
+  QPushButton* saveEventsButton;
+
+
+  QTextEdit *statusText;
     QLineEdit *currentTimeText;
 
     QSlider *slider;

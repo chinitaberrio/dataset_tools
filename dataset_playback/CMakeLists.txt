@@ -32,6 +32,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   h264_bag_playback
   dataset_tools
+  dataset_msgs
 )
 
 catkin_package(CATKIN_DEPENDS dataset_tools)
@@ -40,10 +41,14 @@ catkin_package(CATKIN_DEPENDS dataset_tools)
 set(${PROJECT_NAME}_SOURCES
   src/dataset_panel.cpp
   src/main.cpp
+  src/treeitem.cpp
+  src/treemodel.cpp
 )
 
 set(${PROJECT_NAME}_HEADERS
   include/${PROJECT_NAME}/dataset_panel.h
+  include/${PROJECT_NAME}/treeitem.h
+  include/${PROJECT_NAME}/treemodel.h
 )
 
 # invoke MOC and UI/ include Qt headers/ link Qt libraries
