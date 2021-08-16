@@ -34,6 +34,8 @@ public:
     int n_static_tf = 0;
     for (rosbag::MessageInstance const &m: view) {
       const auto tf = m.instantiate<tf2_msgs::TFMessage>();
+      static_transforms.push_back(tf);
+
       if (do_publish) {
         this->sendTransform(tf->transforms);
       }
@@ -98,6 +100,9 @@ public:
     }
     ROS_INFO_STREAM("Loaded static TF tree data");
   }
+
+
+  std::list<tf2_msgs::TFMessageConstPtr> static_transforms;
 
 };
 

@@ -57,7 +57,8 @@ h264_bag_playback::h264_bag_playback() :
         image_transport(public_nh),
         playback_start(ros::TIME_MIN),
         playback_end(ros::TIME_MAX),
-        total_message_count(0){
+        total_message_count(0),
+        play_all_cameras(false){
 }
 
 
@@ -300,7 +301,7 @@ void h264_bag_playback::OpenBags() {
 
     for (auto topic: bag->topics) {
       if (topic.find("/event/") != std::string::npos) {
-        //std::cout << "looking at topics " << topic << " in bag " << bag->bag_file_name << std::endl;
+        //std::cout << "looking at event topics " << topic << " in bag " << bag->bag_file_name << std::endl;
         event_topics.push_back(topic);
       }
     }
@@ -437,17 +438,16 @@ bool h264_bag_playback::ReadNextPacket() {
 
   ros::Time const& time = m.getTime();
 
-  if (topic == "/tf_static" || topic == "tf_static") {
-    // static transforms are handled separately
-    return true;
-  }
-
   last_packet_time = time;
 
   // all of the publishers should be available due to the AdvertiseTopics function
   std::map<std::string, ros::Publisher>::iterator pub_iter = publishers.find(m.getCallerId() + topic);
   ROS_ASSERT(pub_iter != publishers.end());
 
+  if (topic == "/tf_static" || topic == "tf_static") {
+    // static transforms are handled separately
+    return true;
+  }
 
   // For each camera info msg, check whether we have stored the calibration parameters for this camera
   if (keep_last_of_string(topic, "/") == "camera_info") {
@@ -502,7 +502,6 @@ bool h264_bag_playback::ReadNextPacket() {
 
   ////      std::cout << "calculating time bias for " << camera_name << " as " << camera_time_bias << ", " << frame_info_msg->header.stamp.toNSec() << ", " <<  nvidia_timestamp.toNSec() << std::endl;
 
-
         if (fabs(camera_time_bias.toSec()) > 0.5) {
           adjusted_image_stamp = nvidia_timestamp + camera_time_bias - time_offset_;
         }
@@ -516,8 +515,8 @@ bool h264_bag_playback::ReadNextPacket() {
 
 
       // Check that someone has subscribed to this camera'frame_info_msg images
-      if (!(videos[camera_name].corrected_publisher.getNumSubscribers() == 0 &&
-            videos[camera_name].uncorrected_publisher.getNumSubscribers() == 0))
+      if (play_all_cameras || (!(videos[camera_name].corrected_publisher.getNumSubscribers() == 0 &&
+            videos[camera_name].uncorrected_publisher.getNumSubscribers() == 0)))
       {
 
         Video &current_video = videos[camera_name];
@@ -573,7 +572,7 @@ bool h264_bag_playback::ReadNextPacket() {
             }
 
             // Check if someone wants the uncorrected camera images
-            if (videos[camera_name].uncorrected_publisher.getNumSubscribers() > 0) {
+            if (play_all_cameras || videos[camera_name].uncorrected_publisher.getNumSubscribers() > 0) {
               cv_bridge::CvImagePtr cv_ptr(new cv_bridge::CvImage);
 
               cv_ptr->image = new_frame;

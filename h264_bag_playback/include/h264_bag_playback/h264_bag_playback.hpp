@@ -65,7 +65,7 @@ namespace dataset_toolkit {
     }
 
     template <typename MsgType>
-    bool WriteMessage(std::string &bag_name, std::string &topic_name, ros::Time &msg_time, MsgType msg) {
+    bool WriteMessage(std::string &bag_name, std::string &topic_name, ros::Time &msg_time, MsgType msg, std::string additional_folder_name = "") {
 
       auto bag_instance = output_bags.find(bag_name);
 
@@ -75,8 +75,20 @@ namespace dataset_toolkit {
 
         output_bags[bag_name] = new_bag;
 
-         new_bag->open(prefix + "." + bag_name + ".bag", rosbag::bagmode::Write);
+        std::string modified_prefix = prefix;
 
+        // inject the additional folder name to the prefix
+        if (additional_folder_name != "") {
+          std::size_t found = prefix.find_last_of('/');
+          if (found!=std::string::npos) {
+            modified_prefix = prefix.substr(0,found+1) + additional_folder_name + prefix.substr(found);
+          }
+        }
+
+        std::string additional_bag_name = modified_prefix + "." + bag_name + ".bag";
+        ROS_INFO_STREAM("Saving data to additional bagfile named " << additional_bag_name);
+
+        new_bag->open(additional_bag_name, rosbag::bagmode::Write);
       }
 
       output_bags[bag_name]->write(topic_name, msg_time, msg);
@@ -84,7 +96,7 @@ namespace dataset_toolkit {
     }
 
     bool WriteToVideo(std::string &bag_name, std::string &topic_name, ros::Time &msg_time, sensor_msgs::Image::Ptr image,
-                      sensor_msgs::CameraInfoPtr camera_info_msg = NULL) {
+                      sensor_msgs::CameraInfoPtr camera_info_msg = NULL, std::string additional_folder_name = "") {
 
       auto video_instance = output_videos.find(topic_name);
 
@@ -106,11 +118,21 @@ namespace dataset_toolkit {
         boost::split(topic_parts, topic_name, boost::is_any_of("/"));
 
         //_gmsl_A2_image_color_colored_pointcloud
-        std::string video_file_name = prefix + "-" + topic_parts[2] + ".mp4";
+        std::string modified_prefix = prefix;
+        if (additional_folder_name != "") {
+          // inject the additional folder name to the prefix
+
+          std::size_t found = prefix.find_last_of('/');
+          if (found!=std::string::npos) {
+            modified_prefix = prefix.substr(0,found+1) + additional_folder_name + prefix.substr(found);
+          }
+        }
+
+        std::string video_file_name = modified_prefix + "-" + topic_parts[2] + ".mp4";
 
         //std::string renamed_topic = topic_name;
         //std::replace(renamed_topic.begin(), renamed_topic.end(), '/', '_');
-        ROS_INFO_STREAM("Opening video for " << video_file_name);
+        ROS_INFO_STREAM("Opening video to write new data with name " << video_file_name);
         //return false;
 
         output_videos[topic_name] = cv::VideoWriter();
@@ -174,13 +196,14 @@ pub_comp.publish(  c_img_msg  );
  camera_info.roi.do_rectify=true;
 pubCamInfo.publish(  camera_info ); */
 
+    std::string prefix;
+
   private:
     std::map<std::string, std::shared_ptr<rosbag::Bag>> output_bags;
 
     std::map<std::string, cv::VideoWriter> output_videos;
     std::map<std::string, uint32_t> message_count;
 
-    std::string prefix;
   };
 
   class h264_bag_playback : public nodelet::Nodelet {
@@ -247,6 +270,8 @@ pubCamInfo.publish(  camera_info ); */
 
     BagWriter bag_writer;
 
+    bool play_all_cameras;
+
   protected:
 
     virtual void onInit();
@@ -290,6 +315,7 @@ pubCamInfo.publish(  camera_info ); */
     ros::Time playback_start, playback_end;
     ros::Duration playback_duration;
 
+
     bool camera_time_bias_flag = false;
     ros::Duration camera_time_bias;
 
@@ -301,6 +327,7 @@ pubCamInfo.publish(  camera_info ); */
     uint32_t total_message_count;
 
 
+  public:
     BagStaticTransformBroadcaster tf_static;
 
   };
