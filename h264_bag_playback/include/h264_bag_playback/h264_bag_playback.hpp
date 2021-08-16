@@ -85,7 +85,13 @@ namespace dataset_toolkit {
           }
         }
 
-        std::string additional_bag_name = modified_prefix + "." + bag_name + ".bag";
+        std::string additional_bag_name;
+        if (bag_name != "") {
+          additional_bag_name = modified_prefix + "." + bag_name + ".bag";
+        }
+        else {
+          additional_bag_name = modified_prefix + ".bag";
+        }
         ROS_INFO_STREAM("Saving data to additional bagfile named " << additional_bag_name);
 
         new_bag->open(additional_bag_name, rosbag::bagmode::Write);
