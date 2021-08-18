@@ -36,10 +36,6 @@ public:
       const auto tf = m.instantiate<tf2_msgs::TFMessage>();
       static_transforms.push_back(tf);
 
-      if (do_publish) {
-        this->sendTransform(tf->transforms);
-      }
-
       for (const auto &transform: tf->transforms) {
 
         if (transform.child_frame_id == "velodyne_front_link") {
@@ -92,6 +88,10 @@ public:
           transformer_->setTransform(transform, "zio", true);
         }
 
+        if (do_publish) {
+          //this->sendTransform(tf->transforms);
+          this->sendTransform(transform);
+        }
       }
       n_static_tf++;
       if (n_static_tf > 10)
