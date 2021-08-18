@@ -52,6 +52,7 @@ bool Video::SeekFrame(uint32_t requested_frame) {
 void Video::InitialiseCameraInfo(sensor_msgs::CameraInfo &camera_info) {
 
   camera_info_msg = camera_info;
+  corrected_camera_info_msg = camera_info;
 
   uint32_t image_width = camera_info_msg.width;
   uint32_t image_height = camera_info_msg.height;
@@ -83,7 +84,33 @@ void Video::InitialiseCameraInfo(sensor_msgs::CameraInfo &camera_info) {
                                          image_size,
                                          CV_16SC2,
                                          map1, map2);
+
+
+    //The rectified_cameramat_ is the new cameramat after rectification:
+    //cv::fisheye::estimateNewCameraMatrixForUndistortRectify(cameramat_, distcoeff4, raw_image.size(), cv::Matx33d::eye(), rectified_cameramat_, 1, cv_ptr->image.size(), fov_scale_);
+    //cv::fisheye::initUndistortRectifyMap(cameramat_, distcoeff4, cv::Matx33d::eye(), rectified_cameramat_, cv_ptr->image.size(), CV_32FC1, map1, map2);
+    //Then publish the new camera info out:
+    //sensor_msgs::CameraInfo rectified_camera_info;
+
+    //corrected_camera_info_msg.header = image_msg->header;
+    corrected_camera_info_msg.distortion_model = "rational_polynomial"; // change to rational_polynomial after rectification
+    corrected_camera_info_msg.height = camera_info_msg.height;
+    corrected_camera_info_msg.width = camera_info_msg.width;
+    corrected_camera_info_msg.K[0] = modified_camera_matrix.at<double>(0,0);
+    corrected_camera_info_msg.K[2] = modified_camera_matrix.at<double>(0,2);
+    corrected_camera_info_msg.K[4] = modified_camera_matrix.at<double>(1,1);
+    corrected_camera_info_msg.K[5] = modified_camera_matrix.at<double>(1,2);
+    corrected_camera_info_msg.K[8] = modified_camera_matrix.at<double>(2,2);
+
+    for(int i = 0; i < distance_coeffs.cols; i++)
+      corrected_camera_info_msg.D.push_back(0.0);
+
+    //rectified_camera_info_pub_.publish(rectified_camera_info); (edited)
+
   }
+
+
+
 
   valid_camera_info = true;
 }
@@ -104,14 +131,11 @@ bool Video::InitialiseVideo(std::string camera_name, std::string video_filename)
   std::string topic_prefix = "/gmsl/";
   topic_prefix += camera_name;
 
-  std::string uncorrected_topic_name = topic_prefix;
-  std::string corrected_topic_name = topic_prefix;
+  uncorrected_publisher = image_transport.advertise(topic_prefix + "/image_color", 1);
+  corrected_publisher = image_transport.advertise(topic_prefix + "/rect/image_color", 1);
 
-  uncorrected_topic_name += "/image_color";
-  corrected_topic_name += "/image_rect_color";
-
-  uncorrected_publisher = image_transport.advertise(uncorrected_topic_name, 1);
-  corrected_publisher = image_transport.advertise(corrected_topic_name, 1);
+  corrected_info_publisher = public_nh.advertise<sensor_msgs::CameraInfo>(topic_prefix + "/rect/camera_info", 1);
+  uncorrected_info_publisher = public_nh.advertise<sensor_msgs::CameraInfo>(topic_prefix + "/camera_info", 1);
 
   if(!video_device.isOpened()) { // check if we succeeded
     //ROS_INFO_STREAM("could not open video file: " << file_name << " called " << camera_name);

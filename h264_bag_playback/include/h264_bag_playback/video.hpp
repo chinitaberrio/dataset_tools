@@ -35,10 +35,14 @@ public:
 
   std::string file_name;
 
-  sensor_msgs::CameraInfo camera_info_msg;
+  sensor_msgs::CameraInfo camera_info_msg, corrected_camera_info_msg;
 
   cv::VideoCapture video_device;
   uint32_t frame_counter;
+
+
+  ros::Publisher corrected_info_publisher;
+  ros::Publisher uncorrected_info_publisher;
 
   image_transport::Publisher corrected_publisher;
   image_transport::Publisher uncorrected_publisher;

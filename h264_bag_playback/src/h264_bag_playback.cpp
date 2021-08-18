@@ -474,7 +474,7 @@ bool h264_bag_playback::ReadNextPacket() {
 
       // todo: make this go through the MessagePublisher structure
       //MessagePublisher(pub_iter->second, scaled_info_msg);
-      CameraInfoPublisher(pub_iter->second, m, scaled_info_msg);
+      //CameraInfoPublisher(pub_iter->second, m, scaled_info_msg);
 
       ros::spinOnce();
     }
@@ -566,6 +566,12 @@ bool h264_bag_playback::ReadNextPacket() {
               cv_ptr->header.seq = frame_info_msg->global_counter;
 
               auto image_message = cv_ptr->toImageMsg();
+
+              current_video.corrected_camera_info_msg.header = image_message->header;
+
+              sensor_msgs::CameraInfo::ConstPtr new_info_message(new sensor_msgs::CameraInfo(current_video.corrected_camera_info_msg));
+              CameraInfoPublisher(current_video.corrected_info_publisher, m, new_info_message);
+
               ImagePublisher(current_video.corrected_publisher, image_message);
               ros::spinOnce();
               //current_video.corrected_publisher.publish(cv_ptr->toImageMsg());
@@ -583,6 +589,12 @@ bool h264_bag_playback::ReadNextPacket() {
 
               //current_video.uncorrected_publisher.publish(cv_ptr->toImageMsg());
               auto image_message = cv_ptr->toImageMsg();
+
+              current_video.camera_info_msg.header = image_message->header;
+
+              sensor_msgs::CameraInfo::ConstPtr new_info_message(new sensor_msgs::CameraInfo(current_video.camera_info_msg));
+              CameraInfoPublisher(current_video.uncorrected_info_publisher, m, new_info_message);
+
               ImagePublisher(current_video.uncorrected_publisher, image_message);
               ros::spinOnce();
             }
