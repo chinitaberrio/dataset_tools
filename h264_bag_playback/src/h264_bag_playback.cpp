@@ -544,37 +544,44 @@ bool h264_bag_playback::ReadNextPacket() {
 
             // Check if someone wants the corrected (undistorted) camera images
             if (current_video.valid_camera_info && videos[camera_name].corrected_publisher.getNumSubscribers() > 0) {
-              cv_bridge::CvImagePtr cv_ptr(new cv_bridge::CvImage);
 
-              cv::Mat output_image;
+              try {
+                cv_bridge::CvImagePtr cv_ptr(new cv_bridge::CvImage);
 
-              if (current_video.camera_info_msg.distortion_model == "rational_polynomial") {
-                cv::undistort(new_frame, output_image, current_video.camera_matrix, current_video.distance_coeffs);
+                cv::Mat output_image;
+
+                if (current_video.camera_info_msg.distortion_model == "rational_polynomial") {
+                  cv::undistort(new_frame, output_image, current_video.camera_matrix, current_video.distance_coeffs);
+                }
+                else if (current_video.camera_info_msg.distortion_model == "equidistant") {
+                  cv::remap(new_frame, output_image, current_video.map1, current_video.map2, cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+                }
+                else {
+                  ROS_INFO_STREAM("Unknown distortion model, skipping " << current_video.camera_info_msg.distortion_model);
+                  return true;
+                }
+
+                cv_ptr->image = output_image;
+                cv_ptr->encoding = "bgr8";
+                cv_ptr->header.stamp = adjusted_image_stamp;
+                cv_ptr->header.frame_id = frame_id_dict[camera_name];
+                cv_ptr->header.seq = frame_info_msg->global_counter;
+
+                auto image_message = cv_ptr->toImageMsg();
+
+                current_video.corrected_camera_info_msg.header = image_message->header;
+
+                sensor_msgs::CameraInfo::ConstPtr new_info_message(new sensor_msgs::CameraInfo(current_video.corrected_camera_info_msg));
+
+                CameraInfoPublisher(current_video.corrected_info_publisher, m, new_info_message);
+
+                ImagePublisher(current_video.corrected_publisher, image_message);
+                ros::spinOnce();
+                //current_video.corrected_publisher.publish(cv_ptr->toImageMsg());
               }
-              else if (current_video.camera_info_msg.distortion_model == "equidistant") {
-                cv::remap(new_frame, output_image, current_video.map1, current_video.map2, cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+              catch(...) {
+                ROS_ERROR_STREAM("error in converting " << current_video.corrected_info_publisher.getTopic() << " to a rectified image");
               }
-              else {
-                ROS_INFO_STREAM("Unknown distortion model, skipping " << current_video.camera_info_msg.distortion_model);
-                return true;
-              }
-
-              cv_ptr->image = output_image;
-              cv_ptr->encoding = "bgr8";
-              cv_ptr->header.stamp = adjusted_image_stamp;
-              cv_ptr->header.frame_id = frame_id_dict[camera_name];
-              cv_ptr->header.seq = frame_info_msg->global_counter;
-
-              auto image_message = cv_ptr->toImageMsg();
-
-              current_video.corrected_camera_info_msg.header = image_message->header;
-
-              sensor_msgs::CameraInfo::ConstPtr new_info_message(new sensor_msgs::CameraInfo(current_video.corrected_camera_info_msg));
-              CameraInfoPublisher(current_video.corrected_info_publisher, m, new_info_message);
-
-              ImagePublisher(current_video.corrected_publisher, image_message);
-              ros::spinOnce();
-              //current_video.corrected_publisher.publish(cv_ptr->toImageMsg());
             }
 
             // Check if someone wants the uncorrected camera images
