@@ -52,12 +52,14 @@ bool Video::SeekFrame(uint32_t requested_frame) {
 void Video::InitialiseCameraInfo(sensor_msgs::CameraInfo &camera_info) {
 
   camera_info_msg = camera_info;
-  corrected_camera_info_msg = camera_info;
+  corrected_camera_info_msg = sensor_msgs::CameraInfo();
 
   uint32_t image_width = camera_info_msg.width;
   uint32_t image_height = camera_info_msg.height;
 
   cv::Size image_size = cv::Size(image_width, image_height);
+
+  cv::Mat modified_camera_matrix;
 
   if (camera_info_msg.distortion_model == "rational_polynomial") {
     camera_matrix = cv::Mat(3, 3, CV_64F, &camera_info_msg.K[0]);
@@ -73,7 +75,6 @@ void Video::InitialiseCameraInfo(sensor_msgs::CameraInfo &camera_info) {
     //cv::Mat output_image;
     cv::Mat identity_mat = cv::Mat::eye(3, 3, CV_64F);
 
-    cv::Mat modified_camera_matrix;
     cv::fisheye::estimateNewCameraMatrixForUndistortRectify(camera_matrix, distance_coeffs, image_size,
                                                             identity_mat, modified_camera_matrix);
 
@@ -84,7 +85,6 @@ void Video::InitialiseCameraInfo(sensor_msgs::CameraInfo &camera_info) {
                                          image_size,
                                          CV_16SC2,
                                          map1, map2);
-
 
     //The rectified_cameramat_ is the new cameramat after rectification:
     //cv::fisheye::estimateNewCameraMatrixForUndistortRectify(cameramat_, distcoeff4, raw_image.size(), cv::Matx33d::eye(), rectified_cameramat_, 1, cv_ptr->image.size(), fov_scale_);
@@ -102,15 +102,11 @@ void Video::InitialiseCameraInfo(sensor_msgs::CameraInfo &camera_info) {
     corrected_camera_info_msg.K[5] = modified_camera_matrix.at<double>(1,2);
     corrected_camera_info_msg.K[8] = modified_camera_matrix.at<double>(2,2);
 
-    for(int i = 0; i < distance_coeffs.cols; i++)
+    for(int i = 0; i < 8; i++)
       corrected_camera_info_msg.D.push_back(0.0);
 
     //rectified_camera_info_pub_.publish(rectified_camera_info); (edited)
-
   }
-
-
-
 
   valid_camera_info = true;
 }
