@@ -436,6 +436,11 @@ bool h264_bag_playback::ReadNextPacket() {
 
   std::string const& topic = m.getTopic();
 
+  if (topic == "/tf_static" || topic == "tf_static") {
+    // static transforms are handled separately
+    return true;
+  }
+
   ros::Time const& time = m.getTime();
 
   last_packet_time = time;
@@ -443,11 +448,6 @@ bool h264_bag_playback::ReadNextPacket() {
   // all of the publishers should be available due to the AdvertiseTopics function
   std::map<std::string, ros::Publisher>::iterator pub_iter = publishers.find(m.getCallerId() + topic);
   ROS_ASSERT(pub_iter != publishers.end());
-
-  if (topic == "/tf_static" || topic == "tf_static") {
-    // static transforms are handled separately
-    return true;
-  }
 
   // For each camera info msg, check whether we have stored the calibration parameters for this camera
   if (keep_last_of_string(topic, "/") == "camera_info") {
