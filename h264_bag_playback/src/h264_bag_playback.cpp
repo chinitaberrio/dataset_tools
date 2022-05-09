@@ -569,11 +569,14 @@ bool h264_bag_playback::ReadNextPacket() {
 
                 auto image_message = cv_ptr->toImageMsg();
 
-                current_video.corrected_camera_info_msg.header = image_message->header;
 
-                sensor_msgs::CameraInfo::ConstPtr new_info_message(new sensor_msgs::CameraInfo(current_video.corrected_camera_info_msg));
+                if (current_video.corrected_camera_info_msg.distortion_model != "") {
+                  current_video.corrected_camera_info_msg.header = image_message->header;
 
-                CameraInfoPublisher(current_video.corrected_info_publisher, m, new_info_message);
+                  sensor_msgs::CameraInfo::ConstPtr new_info_message(new sensor_msgs::CameraInfo(current_video.corrected_camera_info_msg));
+
+                  CameraInfoPublisher(current_video.corrected_info_publisher, m, new_info_message);
+                }
 
                 ImagePublisher(current_video.corrected_publisher, image_message);
                 ros::spinOnce();
@@ -597,10 +600,14 @@ bool h264_bag_playback::ReadNextPacket() {
               //current_video.uncorrected_publisher.publish(cv_ptr->toImageMsg());
               auto image_message = cv_ptr->toImageMsg();
 
-              current_video.camera_info_msg.header = image_message->header;
 
-              sensor_msgs::CameraInfo::ConstPtr new_info_message(new sensor_msgs::CameraInfo(current_video.camera_info_msg));
-              CameraInfoPublisher(current_video.uncorrected_info_publisher, m, new_info_message);
+              if (current_video.corrected_camera_info_msg.distortion_model != "") {
+
+                current_video.camera_info_msg.header = image_message->header;
+                sensor_msgs::CameraInfo::ConstPtr new_info_message(
+                    new sensor_msgs::CameraInfo(current_video.camera_info_msg));
+                CameraInfoPublisher(current_video.uncorrected_info_publisher, m, new_info_message);
+              }
 
               ImagePublisher(current_video.uncorrected_publisher, image_message);
               ros::spinOnce();
