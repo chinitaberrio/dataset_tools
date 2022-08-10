@@ -16,7 +16,7 @@ public:
 
   Video() {}
 
-  bool InitialiseVideo(std::string camera_name, std::string video_filename);
+  bool InitialiseVideo(std::string camera_name, std::string video_filename, std::string additional_namespace = "");
   void InitialiseCameraInfo(sensor_msgs::CameraInfo &camera_info);
 
   bool valid_camera_info;

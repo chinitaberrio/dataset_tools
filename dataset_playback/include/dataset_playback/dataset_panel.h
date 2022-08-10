@@ -20,6 +20,8 @@
 
 #include <h264_bag_playback/h264_bag_playback.hpp>
 
+#include "datasetgui.h"
+
 #include <QTreeView>
 #include "treemodel.h"
 
@@ -103,7 +105,7 @@ public:
 };
 
 
-class DatasetPanel: public QFrame
+class DatasetPanel: public Ui_DatasetGUI
 {
     Q_OBJECT
 public:
@@ -133,6 +135,8 @@ protected Q_SLOTS:
     void PollROS();
 
     void selectBagFile();
+
+    std::string exec(const char* cmd);
 
 
 protected:

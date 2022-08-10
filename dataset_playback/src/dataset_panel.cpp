@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <cstdlib>
 #include <unistd.h>
 
 
@@ -33,7 +34,16 @@ DatasetPanel::DatasetPanel( QWidget* parent )
     : QFrame( parent ),
       workerThread(NULL)
 {
-  nh_ = ros::NodeHandle("/");
+
+  ros::NodeHandle nh;
+  ros::NodeHandle private_nh("~");
+
+  std::string initial_folder = "";
+  private_nh.param<std::string>("folder", initial_folder, "/");
+  boost::filesystem::current_path(initial_folder);
+
+  std::string path_check = boost::filesystem::current_path().string();
+  ROS_INFO_STREAM("setting current_path to " << path_check);
 
     file_select_button_ = new QPushButton( "Select file");
     file_select_button_->setFixedHeight(100);
@@ -161,7 +171,14 @@ DatasetPanel::DatasetPanel( QWidget* parent )
 
 
 void DatasetPanel::selectBagFile(){
-  QString fileName = QFileDialog::getOpenFileName(this, tr("Open dataset file"), "/media/stew/datasets/conversions/", tr("Bag Files (*.bag)"));
+
+  ros::NodeHandle nh;
+  ros::NodeHandle private_nh("~");
+
+  std::string initial_folder = "";
+  private_nh.param<std::string>("folder", initial_folder, "/");
+
+  QString fileName = QFileDialog::getOpenFileName(this, tr("Open dataset file"), initial_folder.c_str(), tr("Bag Files (*.bag)"));
   std::cout << fileName.toStdString() << std::endl;
 
   // reset GUI
@@ -367,6 +384,21 @@ void DatasetPanel::addEventToCategory(std::string category, dataset_msgs::Datase
 }
 
 
+
+std::string DatasetPanel::exec(const char* cmd) {
+    std::array<char, 128> buffer;
+    std::string result;
+    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
+    if (!pipe) {
+        throw std::runtime_error("popen() failed!");
+    }
+    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+        result += buffer.data();
+    }
+    return result;
+}
+
+
 void DatasetPanel::convertPressed() {
   // test first whether a folder and files are selected
 
@@ -375,9 +407,16 @@ void DatasetPanel::convertPressed() {
   // write a confirmation dialog box to check whether the conversion should go ahead
 
   // perform the conversion
-std::cout << "trying this " << std::endl;
+
+  std::cout << "boost current_path " << boost::filesystem::current_path() << std::endl;
+  //std::system("rosrun h264_bag_playback convert_folder.sh");
+  std::cout << this->exec("rosrun h264_bag_playback convert_folder.sh") << std::endl;
+
+  std::cout << "finished execution" << std::endl;
+
   if (workerThread && workerThread->current_state == DatasetThread::PLAYBACK_PAUSE) {
     std::cout << "starting conversion" << std::endl;
+
     //execlp("/catkin/src/dataset_metapackage/dataset_tools/h264_bag_playback/scripts/convert_folder.sh",
 /*    execv("/catkin/src/dataset_metapackage/dataset_tools/h264_bag_playback/scripts/convert_folder.sh",
            "/catkin/src/dataset_metapackage/dataset_tools/h264_bag_playback/scripts/convert_folder.sh",

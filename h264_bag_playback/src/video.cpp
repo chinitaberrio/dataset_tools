@@ -30,6 +30,8 @@ Video::ScaleCameraInfoMsg(int original_width,
 bool Video::SeekFrame(uint32_t requested_frame) {
   if (frame_counter != requested_frame) {
 
+//std::cout << "before frame count " << frame_counter << ", requested " << requested_frame << std::endl;
+
     // try to jump forward through the video
     if (video_device.set(CV_CAP_PROP_POS_FRAMES, requested_frame)) {
       ROS_INFO_STREAM("tracking video " << file_name << " from frame " << frame_counter << " to frame " << requested_frame);
@@ -40,6 +42,8 @@ bool Video::SeekFrame(uint32_t requested_frame) {
 
     frame_counter = video_device.get(CV_CAP_PROP_POS_FRAMES);
   }
+
+//std::cout << "after frame count " << frame_counter << ", requested " << requested_frame << std::endl;
 
   // see if the frame was successfully found
   if (frame_counter == requested_frame)
@@ -113,7 +117,7 @@ void Video::InitialiseCameraInfo(sensor_msgs::CameraInfo &camera_info) {
 
 
 
-bool Video::InitialiseVideo(std::string camera_name, std::string video_filename) {
+bool Video::InitialiseVideo(std::string camera_name, std::string video_filename, std::string additional_namespace) {
 
   ros::NodeHandle private_nh("~");
   ros::NodeHandle public_nh;
@@ -127,11 +131,11 @@ bool Video::InitialiseVideo(std::string camera_name, std::string video_filename)
   std::string topic_prefix = "/gmsl/";
   topic_prefix += camera_name;
 
-  uncorrected_publisher = image_transport.advertise(topic_prefix + "/image_color", 1);
-  corrected_publisher = image_transport.advertise(topic_prefix + "/rect/image_color", 1);
+  uncorrected_publisher = image_transport.advertise(additional_namespace + topic_prefix + "/image_color", 1);
+  corrected_publisher = image_transport.advertise(additional_namespace + topic_prefix + "/rect/image_color", 1);
 
-  corrected_info_publisher = public_nh.advertise<sensor_msgs::CameraInfo>(topic_prefix + "/rect/camera_info", 1);
-  uncorrected_info_publisher = public_nh.advertise<sensor_msgs::CameraInfo>(topic_prefix + "/camera_info", 1);
+  corrected_info_publisher = public_nh.advertise<sensor_msgs::CameraInfo>(additional_namespace + topic_prefix + "/rect/camera_info", 1);
+  uncorrected_info_publisher = public_nh.advertise<sensor_msgs::CameraInfo>(additional_namespace + topic_prefix + "/camera_info", 1);
 
   if(!video_device.isOpened()) { // check if we succeeded
     //ROS_INFO_STREAM("could not open video file: " << file_name << " called " << camera_name);

@@ -3,7 +3,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-input_folder=$1
+input_folder="$(pwd)/"
 
 #find $input_folder/* -prune -type d | while IFS= read -r d; do
 d=${input_folder}

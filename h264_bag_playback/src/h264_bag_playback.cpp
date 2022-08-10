@@ -51,7 +51,7 @@ namespace dataset_toolkit
 
 
 h264_bag_playback::h264_bag_playback() :
-        transformer_(std::make_shared<tf2_ros::Buffer>(ros::Duration(200.))),
+        transformer_(std::make_shared<tf2_ros::Buffer>(ros::Duration(10000.))),
         horizonInBuffer(false),
         private_nh("~"),
         image_transport(public_nh),
@@ -72,7 +72,7 @@ void h264_bag_playback::timerCallback(const ros::TimerEvent& event) {
 }
 
 
-void h264_bag_playback::init_playback() {
+void h264_bag_playback::init_playback(std::string input_bag_file_name) {
 
     // parameter to scale the size of the images from the h264 playback
     scaled_width = 0;
@@ -93,9 +93,14 @@ void h264_bag_playback::init_playback() {
     private_nh.param("limit_playback_speed", limit_playback_speed, true);
 
 
-    // determine the bag file to playback
-    private_nh.getParam("bag_file", bag_file_name);
-
+    if (input_bag_file_name == "") {
+      // determine the bag file to playback
+      private_nh.getParam("bag_file", bag_file_name);
+    }
+    else {
+      bag_file_name = input_bag_file_name;
+    }
+      
     if (bag_file_name.empty()) {
       ROS_INFO_STREAM("Bag file name parameter is missing " << bag_file_name);
       return;
@@ -152,7 +157,7 @@ void h264_bag_playback::init_playback() {
 
       Video new_video;
       videos[camera_name] = new_video;
-      if (videos[camera_name].InitialiseVideo(camera_name, file_name)){
+      if (videos[camera_name].InitialiseVideo(camera_name, file_name, additional_namespace)){
         ROS_INFO_STREAM("Loading " << file_name << " for camera " << camera_name);
       }
       else {
@@ -326,12 +331,10 @@ void h264_bag_playback::OpenBags() {
 
   // creat a tf bag view object so that we can view future tf msgs
   std::vector<std::string> tf_topics{"tf", "/tf"};
-  std::vector<std::string> imu_topics{"vn100/imu", "/vn100/imu"};
+  std::vector<std::string> imu_topics{"vn100/imu", "/vn100/imu", "/ibeo_interface_node/xsens/IMU"};
 
 
   for (auto bag: bags) {
-
-    std::cout << "1 " << bag->bag_file_name << std::endl;
 
     for (auto tf_topic: tf_topics) {
       if (bag->topics.find(tf_topic) != bag->topics.end()) {
@@ -621,7 +624,7 @@ bool h264_bag_playback::ReadNextPacket() {
     MessagePublisher(pub_iter->second, m);
     ros::spinOnce();
   }
-  else if (topic == "vn100/imu" || topic == "/vn100/imu" || topic == "xsens/IMU" || topic == "/xsens/IMU") {
+  else if (topic == "vn100/imu" || topic == "/vn100/imu" || topic == "xsens/IMU" || topic == "/xsens/IMU" || topic == "/ibeo_interface_node/xsens/IMU") {
 
     auto msg = m.instantiate<sensor_msgs::Imu>();
 
@@ -770,8 +773,16 @@ h264_bag_playback::AdvertiseTopics(std::shared_ptr<rosbag::View> view) {
     if (pub_iter == publishers.end()) {
 
       ros::AdvertiseOptions opts = rosbag::createAdvertiseOptions(c, 10);
+      
+      //opts.topic = additional_namespace + opts.topic;
+      
+      //ros::Publisher pub = public_nh.advertise(opts);
+      std::string topic_namespace_name = additional_namespace + opts.topic;
 
-      ros::Publisher pub = public_nh.advertise(opts);
+      ros::AdvertiseOptions namespace_opts(additional_namespace + opts.topic, 10, opts.md5sum, opts.datatype, opts.message_definition);
+
+      ros::Publisher pub = public_nh.advertise(namespace_opts);
+
       publishers.insert(publishers.begin(), std::pair<std::string, ros::Publisher>(callerid_topic, pub));
     }
   }

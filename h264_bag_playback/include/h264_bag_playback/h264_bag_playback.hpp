@@ -71,6 +71,8 @@ namespace dataset_toolkit {
 
       if (bag_instance == output_bags.end()) {
 
+//std::cout << "msg 1" << std::endl;
+
         std::shared_ptr<rosbag::Bag> new_bag = std::make_shared<rosbag::Bag>();
 
         output_bags[bag_name] = new_bag;
@@ -92,12 +94,17 @@ namespace dataset_toolkit {
         else {
           additional_bag_name = modified_prefix + ".bag";
         }
-        ROS_INFO_STREAM("Saving data to additional bagfile named " << additional_bag_name);
+//        ROS_INFO_STREAM("Saving data to additional bagfile named " << additional_bag_name);
 
         new_bag->open(additional_bag_name, rosbag::bagmode::Write);
       }
 
+//std::cout << "msg 3" << std::endl;
+
       output_bags[bag_name]->write(topic_name, msg_time, msg);
+
+//std::cout << "msg 4" << std::endl;
+
       return true;
     }
 
@@ -217,7 +224,7 @@ pubCamInfo.publish(  camera_info ); */
 
     h264_bag_playback();
 
-    void init_playback();
+    void init_playback(std::string input_bag_file_name = "");
 
     void bypass_init() {
       this->onInit();
@@ -332,9 +339,10 @@ pubCamInfo.publish(  camera_info ); */
     // store the total number of messages
     uint32_t total_message_count;
 
-
   public:
     BagStaticTransformBroadcaster tf_static;
+
+    std::string additional_namespace;
 
   };
 
