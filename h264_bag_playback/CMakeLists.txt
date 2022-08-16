@@ -56,6 +56,7 @@ target_link_libraries(${PROJECT_NAME}_node
 add_library(${PROJECT_NAME}
 		src/h264_bag_playback.cpp
 		src/video.cpp
+		src/bag_writer.cpp
 		src/helper_functions.cpp
 		src/bag_container.cpp)
 
