@@ -1,8 +1,0 @@
-prefix=/usr/local
-
-Name: DatasetGUI
-Description: Description of DatasetGUI
-Version: 0.0.1
-Cflags: 
-Libs: -L${prefix}/lib 
-Requires: 

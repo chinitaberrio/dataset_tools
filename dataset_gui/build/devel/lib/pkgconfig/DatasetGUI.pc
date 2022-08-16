@@ -1,8 +1,0 @@
-prefix=/src/container_catkin/src/dataset_tools/dataset_playback/qt-test/DatasetGUI/build/devel
-
-Name: DatasetGUI
-Description: Description of DatasetGUI
-Version: 0.0.1
-Cflags: 
-Libs: -L${prefix}/lib 
-Requires: 
