@@ -126,7 +126,6 @@ namespace dataset_toolkit {
 
       if (video_instance == output_videos.end()) {
 
-
         std::vector<std::string> topic_parts;
         boost::split(topic_parts, topic_name, boost::is_any_of("/"));
 
@@ -157,6 +156,7 @@ namespace dataset_toolkit {
           ROS_INFO_STREAM("could not open video file: " << video_file_name);
           return false;
         }
+
 
         output_videos[topic_name].write(cv_ptr->image);
       }

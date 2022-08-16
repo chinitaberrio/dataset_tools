@@ -1,0 +1,2 @@
+- setup-file:
+    local-name: /src/container_catkin/src/dataset_tools/dataset_playback/qt-test/DatasetGUI/build/devel/setup.sh

@@ -1,0 +1,10 @@
+<launch>
+
+<node pkg="dataset_gui" type="dataset_gui" name="dataset_gui" output="screen">
+
+     <param name="folder" value="$(arg folder)"/>
+
+</node>
+</launch>
+
+
