@@ -18,6 +18,9 @@ void DatasetGUI::InitialiseWindow() {
 
   std::cout << "read folder parameter " << initial_folder << std::endl;
 
+  log_subscriber_ = nh.subscribe("/rosout_agg", 1, &DatasetGUI::newLogMessage, this);
+
+
   std::string path_check = boost::filesystem::current_path().string();
   ROS_INFO_STREAM("setting current_path to " << path_check);
 
@@ -70,6 +73,8 @@ void DatasetGUI::InitialiseWindow() {
 
     connect( ui->bagAnalysePosOnly, SIGNAL( pressed() ), this, SLOT(bagAnalysePosOnly() ));
 
+    connect( ui->panorama3Cameras, SIGNAL( pressed() ), this, SLOT(panorama3Cameras() ));
+    connect( ui->panorama5Cameras, SIGNAL( pressed() ), this, SLOT(panorama5Cameras() ));
 
     connect( ui->timeSlider, SIGNAL(sliderPressed()), this, SLOT(sliderPressed()));
     connect( ui->timeSlider, SIGNAL(sliderMoved(int)), this, SLOT(sliderMoved(int)));
@@ -96,6 +101,13 @@ DatasetGUI::DatasetGUI(QWidget *parent) :
 DatasetGUI::~DatasetGUI()
 {
     delete ui;
+}
+
+
+void DatasetGUI::newLogMessage(rosgraph_msgs::Log::ConstPtr new_message) {
+  if (processorThread) {
+    processorThread->resultsDestination->append(new_message->msg.c_str());
+  }
 }
 
 
@@ -388,16 +400,16 @@ void DatasetGUI::eventGeneratorPressed() {
 
 
 void DatasetGUI::processingPartial(QString results) {
-  if (processorThread) {
+/*  if (processorThread) {
     if (processorThread->resultsDestination) {
       processorThread->resultsDestination->setText("");
       setTextTermFormatting(processorThread->resultsDestination, results);
     }
-  }
+  }*/
 }
 
 void DatasetGUI::processingCompleted(QString results) {
-  if (processorThread) {
+/*  if (processorThread) {
     if (processorThread->resultsDestination) {
       processorThread->resultsDestination->setText("");
       setTextTermFormatting(processorThread->resultsDestination, results);
@@ -409,7 +421,7 @@ void DatasetGUI::processingCompleted(QString results) {
   }
   else {
     std::cout << "processor thread not found" << std::endl;
-  }
+  }*/
 }
 
 
@@ -450,6 +462,31 @@ void DatasetGUI::runCommand(QTextEdit *destination, QString command, QString dis
   connect(processorThread, SIGNAL(partialReady(QString)), this, SLOT(processingPartial(QString)));
   processorThread->start();
 }
+
+
+void DatasetGUI::panorama5Cameras() {
+  if (workerThread) {
+    std::ostringstream oss;
+    oss << "roslaunch panorama_bag_playback panorama_bag_5_cameras.launch bag_file_name:=" << workerThread->file_name;
+    runCommand(ui->postprocessingTextEdit, oss.str().c_str(), "Running panorama generator (please wait, this might take a minute or two)");
+  }
+  else {
+    std::cout << "no file is loaded to generate the panorama" << std::endl;    
+  }
+}
+
+
+void DatasetGUI::panorama3Cameras() {
+  if (workerThread) {
+    std::ostringstream oss;
+    oss << "roslaunch panorama_bag_playback panorama_bag_3_cameras.launch bag_file_name:=" << workerThread->file_name;
+    runCommand(ui->postprocessingTextEdit, oss.str().c_str(), "Running panorama generator (please wait, this might take a minute or two)");
+  }
+  else {
+    std::cout << "no file is loaded to generate the panorama" << std::endl;    
+  }
+}
+
 
 
 void DatasetGUI::bagAnalysePosOnly() {

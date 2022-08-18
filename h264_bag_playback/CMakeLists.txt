@@ -46,6 +46,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 # Create the nodelet tutorial library
 add_executable(${PROJECT_NAME}_node
 		src/h264_bag_playback.cpp
+		src/bag_static_transform_publisher.cpp
 		src/video.cpp
 		src/helper_functions.cpp)
 
@@ -57,6 +58,7 @@ add_library(${PROJECT_NAME}
 		src/h264_bag_playback.cpp
 		src/video.cpp
 		src/bag_writer.cpp
+		src/bag_static_transform_publisher.cpp
 		src/helper_functions.cpp
 		src/bag_container.cpp)
 

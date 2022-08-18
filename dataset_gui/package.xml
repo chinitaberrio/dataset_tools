@@ -15,6 +15,7 @@
   <depend>h264_bag_playback</depend>
   <depend>dataset_tools</depend>
   <depend>dataset_msgs</depend>
+  <depend>rosgraph_msgs</depend>  
   <depend>libqt5-core</depend>
   <depend>libqt5-gui</depend>
   <depend>libqt5-widgets</depend>

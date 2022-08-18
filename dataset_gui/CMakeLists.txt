@@ -17,6 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
   custom_point_types
   tf
   tf_conversions
+  rosgraph_msgs
   tf2_msgs
 )
 

@@ -13,6 +13,8 @@
 #include "dataset_thread.h"
 #include <h264_bag_playback/h264_bag_playback.hpp>
 
+#include <rosgraph_msgs/Log.h>
+
 class DatasetThread;
 class ProcessingThread;
 
@@ -70,12 +72,17 @@ protected Q_SLOTS:
 
     void angleLeftLane(QString results);
     void angleRightLane(QString results);
-    
+
+    void panorama3Cameras();
+    void panorama5Cameras();
+
     void processingPartial(QString results);
     void processingCompleted(QString results);
 
 
 public:
+
+    void newLogMessage(rosgraph_msgs::Log::ConstPtr new_message);
 
     void runCommand(QTextEdit *destination, QString command, QString display_info);
 
@@ -91,6 +98,8 @@ public:
 
 private:
     Ui::DatasetGUI *ui;
+
+    ros::Subscriber log_subscriber_;
 };
 
 #endif // DATASETGUI_H

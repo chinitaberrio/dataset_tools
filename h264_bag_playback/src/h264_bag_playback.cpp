@@ -333,6 +333,12 @@ void h264_bag_playback::OpenBags() {
   std::vector<std::string> tf_topics{"tf", "/tf"};
   std::vector<std::string> imu_topics{"vn100/imu", "/vn100/imu", "/ibeo_interface_node/xsens/IMU"};
 
+  // override static transforms as required from the ros parameters
+  std::vector<std::string> static_tf_corrections = private_nh.param<std::vector<std::string>>("static_tf_corrections", {});
+  
+  for (auto correction: static_tf_corrections) {
+    tf_static.ApplyCorrection(correction, transformer_);
+  }
 
   for (auto bag: bags) {
 

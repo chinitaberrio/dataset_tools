@@ -1,0 +1,4 @@
+
+
+static_tf_corrections:
+ - "base_link, velodyne_front_link, 1.2, 0, 1.37, 0.00271, 0.0664, -0.0407, 0.997"
