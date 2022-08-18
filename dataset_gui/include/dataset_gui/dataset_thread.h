@@ -36,7 +36,6 @@ public:
 
 signals:
   void resultReady(const QString &s);
-  void partialReady(const QString &s);
     
 
 public:
@@ -55,7 +54,6 @@ public:
       }
       while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
           result += buffer.data();
-          emit partialReady(QString(result.c_str()));
       }
       return result;
   }

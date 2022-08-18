@@ -76,7 +76,6 @@ protected Q_SLOTS:
     void panorama3Cameras();
     void panorama5Cameras();
 
-    void processingPartial(QString results);
     void processingCompleted(QString results);
 
 

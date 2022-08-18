@@ -106,7 +106,9 @@ DatasetGUI::~DatasetGUI()
 
 void DatasetGUI::newLogMessage(rosgraph_msgs::Log::ConstPtr new_message) {
   if (processorThread) {
-    processorThread->resultsDestination->append(new_message->msg.c_str());
+    std::stringstream oss;
+    oss << new_message->name.c_str() << ": " << new_message->msg.c_str();
+    processorThread->resultsDestination->append(oss.str().c_str());
   }
 }
 
@@ -388,7 +390,6 @@ void DatasetGUI::eventGeneratorPressed() {
     processorThread->command = std::string("rosrun event_generator run.sh " + workerThread->file_name);
     processorThread->resultsDestination = ui->preprocessingTextEdit;
     connect(processorThread, SIGNAL(resultReady(QString)), this, SLOT(processingCompleted(QString)));
-    connect(processorThread, SIGNAL(partialReady(QString)), this, SLOT(processingPartial(QString)));
     processorThread->start();
 
   }
@@ -399,21 +400,9 @@ void DatasetGUI::eventGeneratorPressed() {
 }
 
 
-void DatasetGUI::processingPartial(QString results) {
-/*  if (processorThread) {
-    if (processorThread->resultsDestination) {
-      processorThread->resultsDestination->setText("");
-      setTextTermFormatting(processorThread->resultsDestination, results);
-    }
-  }*/
-}
 
 void DatasetGUI::processingCompleted(QString results) {
-/*  if (processorThread) {
-    if (processorThread->resultsDestination) {
-      processorThread->resultsDestination->setText("");
-      setTextTermFormatting(processorThread->resultsDestination, results);
-    }
+  if (processorThread) {
     ui->preprocessingTextEdit->append("Conversion process complete");
 
     delete processorThread;
@@ -421,7 +410,7 @@ void DatasetGUI::processingCompleted(QString results) {
   }
   else {
     std::cout << "processor thread not found" << std::endl;
-  }*/
+  }
 }
 
 
@@ -438,7 +427,6 @@ void DatasetGUI::angleRightLane(QString results) {
   processorThread->command = "rosrun h264_bag_playback convert_folder.sh";
   processorThread->resultsDestination = ui->preprocessingTextEdit;
   connect(processorThread, SIGNAL(resultReady(QString)), this, SLOT(processingCompleted(QString)));
-  connect(processorThread, SIGNAL(partialReady(QString)), this, SLOT(processingPartial(QString)));
   processorThread->start();
 
   //ui->preprocessingTextEdit->append("Conversion process complete");
@@ -459,7 +447,6 @@ void DatasetGUI::runCommand(QTextEdit *destination, QString command, QString dis
   processorThread->command = command.toStdString();
   processorThread->resultsDestination = destination;
   connect(processorThread, SIGNAL(resultReady(QString)), this, SLOT(processingCompleted(QString)));
-  connect(processorThread, SIGNAL(partialReady(QString)), this, SLOT(processingPartial(QString)));
   processorThread->start();
 }
 
@@ -519,7 +506,6 @@ void DatasetGUI::convertPressed() {
   processorThread->command = "rosrun h264_bag_playback convert_folder.sh";
   processorThread->resultsDestination = ui->preprocessingTextEdit;
   connect(processorThread, SIGNAL(resultReady(QString)), this, SLOT(processingCompleted(QString)));
-  connect(processorThread, SIGNAL(partialReady(QString)), this, SLOT(processingPartial(QString)));
   processorThread->start();
 
   //ui->preprocessingTextEdit->append("Conversion process complete");

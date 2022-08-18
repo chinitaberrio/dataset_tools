@@ -43,7 +43,7 @@
                </size>
               </property>
               <property name="text">
-               <string>Start</string>
+               <string>Play</string>
               </property>
              </widget>
             </item>
@@ -607,6 +607,11 @@
               <height>60</height>
              </size>
             </property>
+            <property name="font">
+             <font>
+              <pointsize>12</pointsize>
+             </font>
+            </property>
             <property name="text">
              <string>Front lidar angles</string>
             </property>
@@ -619,6 +624,11 @@
               <width>200</width>
               <height>60</height>
              </size>
+            </property>
+            <property name="font">
+             <font>
+              <pointsize>12</pointsize>
+             </font>
             </property>
             <property name="text">
              <string>Rear lidar angles</string>
