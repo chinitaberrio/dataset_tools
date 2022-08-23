@@ -27,6 +27,7 @@
 #include <tf2/LinearMath/Transform.h>
 
 #include <dataset_msgs/DatasetEvent.h>
+#include "rosgraph_msgs/Clock.h"
 
 #include <boost/algorithm/string.hpp>
 
@@ -149,6 +150,8 @@ namespace dataset_toolkit {
     ros::Time playback_start, playback_end;
     ros::Duration playback_duration;
 
+    ros::Publisher clock_publisher;
+    rosgraph_msgs::Clock clock_msg;
 
     bool camera_time_bias_flag = false;
     ros::Duration camera_time_bias;

@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1422</width>
-    <height>587</height>
+    <height>680</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -72,6 +72,19 @@
                </size>
               </property>
              </spacer>
+            </item>
+            <item>
+             <widget class="QPushButton" name="launchRViz">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>60</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>RViz</string>
+              </property>
+             </widget>
             </item>
             <item>
              <widget class="QPushButton" name="selectButton">

@@ -52,6 +52,8 @@ void DatasetGUI::InitialiseWindow() {
     connect( ui->convertButton, SIGNAL( pressed() ), this, SLOT( convertPressed() ));
     connect( ui->eventGeneratorButton, SIGNAL( pressed() ), this, SLOT( eventGeneratorPressed() ));
 
+    connect( ui->launchRViz, SIGNAL( pressed() ), this, SLOT( launchRViz() ));
+
 //    connect( ui->angleLeftLane, SIGNAL( pressed() ), this, SLOT( angleLeftLane() ));
 //    connect( ui->angleRightLane, SIGNAL( pressed() ), this, SLOT( angleRightLane() ));
 
@@ -91,6 +93,7 @@ DatasetGUI::DatasetGUI(QWidget *parent) :
     ui(new Ui::DatasetGUI),
     workerThread(NULL),
     processorThread(NULL),
+    rvizThread(NULL),
     tree_model(NULL)
 {
     ui->setupUi(this);
@@ -399,6 +402,35 @@ void DatasetGUI::eventGeneratorPressed() {
 
 }
 
+
+
+void DatasetGUI::launchRViz() {
+  
+  if (rvizThread) {
+    std::cout << "cannot start rviz, existing process is in already running" << std::endl;  
+    return;
+  }
+
+  rvizThread = new ProcessingThread();
+  rvizThread->command = "rosparam set use_sim_time true && rosrun rviz rviz";
+  rvizThread->resultsDestination = NULL;
+  connect(rvizThread, SIGNAL(resultReady(QString)), this, SLOT(rvizCompleted(QString)));
+  rvizThread->start();
+
+}
+
+
+
+
+void DatasetGUI::rvizCompleted(QString output) {
+  if (rvizThread) {
+    delete rvizThread;
+    rvizThread = NULL;
+  }
+  else {
+    std::cout << "rviz thread not found" << std::endl;
+  }
+}
 
 
 void DatasetGUI::processingCompleted(QString results) {

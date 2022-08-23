@@ -59,6 +59,7 @@ h264_bag_playback::h264_bag_playback() :
         playback_end(ros::TIME_MAX),
         total_message_count(0),
         play_all_cameras(false){
+
 }
 
 
@@ -416,9 +417,6 @@ void h264_bag_playback::SeekTime(ros::Time seek_time) {
   } while (earliest_time <= seek_time);
 }
 
-
-
-
 bool h264_bag_playback::ReadNextPacket() {
 
   // find the next in time order
@@ -635,6 +633,16 @@ bool h264_bag_playback::ReadNextPacket() {
     auto msg = m.instantiate<sensor_msgs::Imu>();
 
     if (msg) {
+
+      // publish the time for any node that is simulating the ros time
+      if (clock_publisher.getTopic() == "") {
+         clock_publisher = public_nh.advertise<rosgraph_msgs::Clock>("/clock", 1000);
+      }
+
+      clock_msg.clock = msg->header.stamp;
+      clock_publisher.publish(clock_msg);
+
+
       // compute horizon transforms from imu msg and publish them
       geometry_msgs::TransformStamped baselink, footprint;
       CorrectedImuPlayback::imu2horizontf(msg, baselink, footprint);

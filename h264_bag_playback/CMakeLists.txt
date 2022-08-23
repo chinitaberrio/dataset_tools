@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS nodelet
 	dataset_msgs
 	std_msgs
 	cv_bridge
+	rosgraph_msgs
 	nav_msgs
 	sensor_msgs)
 

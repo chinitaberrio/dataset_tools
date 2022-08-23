@@ -35,6 +35,8 @@ public:
     DatasetThread *workerThread;
     ProcessingThread *processorThread;
 
+    ProcessingThread *rvizThread;
+
 protected Q_SLOTS:
 
     // slot for when the start button is pressed
@@ -52,6 +54,9 @@ protected Q_SLOTS:
     void addSecond();
     void subtractMinute();
     void subtractSecond();
+
+    void launchRViz();
+    void rvizCompleted(QString output);
 
     void changePlaybackFast();
     void changePlaybackDouble();
