@@ -1,6 +1,6 @@
 <launch>
 
-<node pkg="dataset_gui" type="dataset_gui" name="dataset_gui" output="screen">
+<node pkg="dataset_gui" type="dataset_gui" name="dataset_gui" output="screen" required="true">
 
      <param name="folder" value="$(arg folder)"/>
     <!-- load the static transform corrections-->

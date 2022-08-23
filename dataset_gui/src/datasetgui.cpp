@@ -222,8 +222,6 @@ void DatasetGUI::resetGUI(){
   tree_model = new TreeModel(headers, data);
 
   ui->treeView->setModel(tree_model);
-
-  
 }
 
 
