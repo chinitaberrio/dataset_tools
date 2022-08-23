@@ -74,6 +74,7 @@ void DatasetGUI::InitialiseWindow() {
     connect( ui->checkPlaybackQuarter, SIGNAL( pressed() ), this, SLOT( changePlaybackQuarter() ));
 
     connect( ui->bagAnalysePosOnly, SIGNAL( pressed() ), this, SLOT(bagAnalysePosOnly() ));
+    connect( ui->bagAnalysePosYaw, SIGNAL( pressed() ), this, SLOT(bagAnalysePosYaw() ));    
 
     connect( ui->panorama3Cameras, SIGNAL( pressed() ), this, SLOT(panorama3Cameras() ));
     connect( ui->panorama5Cameras, SIGNAL( pressed() ), this, SLOT(panorama5Cameras() ));
@@ -125,7 +126,10 @@ void DatasetGUI::selectBagFile(){
   private_nh.param<std::string>("folder", initial_folder, "/");
 
   QString fileName = QFileDialog::getOpenFileName(this, tr("Open dataset file"), initial_folder.c_str(), tr("Bag Files (*.bag)"));
-  std::cout << fileName.toStdString() << std::endl;
+
+  if (fileName == "") {
+    return;
+  }
 
   resetGUI();
 
@@ -519,6 +523,19 @@ void DatasetGUI::bagAnalysePosOnly() {
   }
 
 }
+
+void DatasetGUI::bagAnalysePosYaw() {
+  if (workerThread) {
+    std::ostringstream oss;
+    oss << "rosrun bag_analysis bag-analyse.py -bag " << workerThread->file_name << " -pos -yaw -yaw-rate";
+    runCommand(ui->preprocessingTextEdit, oss.str().c_str(), "Running bag analysis - plotting position, yaw and yaw-rate (please wait, this might take a minute or two)");
+  }
+  else {
+    std::cout << "no file is loaded to analyse" << std::endl;    
+  }
+
+}
+
 
 void DatasetGUI::angleLeftLane(QString results) {
   runCommand(ui->preprocessingTextEdit, "rosrun h264_bag_playback convert_folder.sh", "Running conversion between H264 and MP4");

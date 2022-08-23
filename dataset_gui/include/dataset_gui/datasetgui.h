@@ -74,6 +74,7 @@ protected Q_SLOTS:
     void selectBagFile();
 
     void bagAnalysePosOnly();
+    void bagAnalysePosYaw();
 
     void angleLeftLane(QString results);
     void angleRightLane(QString results);
