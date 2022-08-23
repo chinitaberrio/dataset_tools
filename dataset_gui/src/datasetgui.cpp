@@ -726,6 +726,7 @@ void DatasetGUI::changePlaybackFast(){
   if (workerThread) {
     workerThread->bag_playback.limit_playback_speed = false; //!ui->checkPlaybackRealtime->isChecked();
     workerThread->bag_playback.scale_playback_speed = 1000.;
+    workerThread->bag_playback.ResyncPlaybackTime();
 //    ROS_INFO_STREAM("is checked " << workerThread->bag_playback.limit_playback_speed);
   }
 }
@@ -735,6 +736,7 @@ void DatasetGUI::changePlaybackHalf() {
   if (workerThread) {
     workerThread->bag_playback.limit_playback_speed = true; //!ui->checkPlaybackRealtime->isChecked();
     workerThread->bag_playback.scale_playback_speed = .5;
+    workerThread->bag_playback.ResyncPlaybackTime();
 //    ROS_INFO_STREAM("is checked " << workerThread->bag_playback.limit_playback_speed);
   }
 }
@@ -743,6 +745,8 @@ void DatasetGUI::changePlaybackQuarter() {
   if (workerThread) {
     workerThread->bag_playback.limit_playback_speed = true; //!ui->checkPlaybackRealtime->isChecked();
     workerThread->bag_playback.scale_playback_speed = .25;
+    workerThread->bag_playback.ResyncPlaybackTime();
+
 //    ROS_INFO_STREAM("is checked " << workerThread->bag_playback.limit_playback_speed);
   }
 }
@@ -751,6 +755,7 @@ void DatasetGUI::changePlaybackDouble() {
   if (workerThread) {
     workerThread->bag_playback.limit_playback_speed = true; //!ui->checkPlaybackRealtime->isChecked();
     workerThread->bag_playback.scale_playback_speed = 2.;
+    workerThread->bag_playback.ResyncPlaybackTime();
 //    ROS_INFO_STREAM("is checked " << workerThread->bag_playback.limit_playback_speed);
   }
 }
@@ -758,7 +763,8 @@ void DatasetGUI::changePlaybackDouble() {
 void DatasetGUI::changePlaybackRealtime(){
   if (workerThread) {
     workerThread->bag_playback.limit_playback_speed = true; //!ui->checkPlaybackRealtime->isChecked();
-    workerThread->bag_playback.scale_playback_speed = 1.;
+    workerThread->bag_playback.scale_playback_speed = 1.0;
+    workerThread->bag_playback.ResyncPlaybackTime();
 //    ROS_INFO_STREAM("is checked " << workerThread->bag_playback.limit_playback_speed);
   }
 }

@@ -5,8 +5,9 @@
      <param name="folder" value="$(arg folder)"/>
     <!-- load the static transform corrections-->
     <!--
-    <rosparam file="$(find h264_bag_playback)/config/static_tf_corrections.yaml" command="load" />
     -->
+    <rosparam file="$(find h264_bag_playback)/config/static_tf_corrections.yaml" command="load" />
+
 </node>
 </launch>
 

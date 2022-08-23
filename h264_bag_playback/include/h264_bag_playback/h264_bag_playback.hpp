@@ -73,6 +73,8 @@ namespace dataset_toolkit {
 
     bool ReadNextPacket();
 
+    void ResyncPlaybackTime();
+
     std::shared_ptr <CorrectedImuPlayback> imu_view;
     std::shared_ptr <rosbag::View> tf_view;
 

@@ -415,6 +415,16 @@ void h264_bag_playback::SeekTime(ros::Time seek_time) {
     earliest_iter->iter++;
 
   } while (earliest_time <= seek_time);
+
+}
+
+
+void h264_bag_playback::ResyncPlaybackTime() {
+
+  // resync the playback speed after this change
+  time_sync_real = ros::Time::now();
+  time_sync_latest = ros::Time::now();
+//  time_sync_playback = seek_time;
 }
 
 bool h264_bag_playback::ReadNextPacket() {
