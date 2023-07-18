@@ -9,9 +9,7 @@ namespace dataset_toolkit
 {
 replace_msg::replace_msg()
 {
-
     out_bag.open("replace_msg.bag", rosbag::bagmode::Write);
-
 
 //    bag.close();
 }
@@ -44,20 +42,17 @@ void replace_msg::StaticTfPublisher(rosbag::Bag &bag, bool do_publish) {
     }
 
     for (auto &transform: tf->transforms) {
-
-      if(transform.child_frame_id == "velodyne_front_link"){
-          // replace base->velodyne for testing
-
+      if(transform.child_frame_id == "base_link"){
           tf2::Transform odom_tf;
           tf2::fromMsg(transform.transform, odom_tf);
           double r,p,yaw;
           odom_tf.getBasis().getRPY(r,p,yaw);
-          ROS_ERROR_STREAM("original velodyne tf yaw "<<yaw << " pitch " << p << " roll " << r);
+          ROS_ERROR_STREAM("original ouster tf yaw "<<yaw << " pitch " << p << " roll " << r);
 
         geometry_msgs::TransformStamped transformStamped;
         transformStamped.header.stamp = ros::Time::now();
         transformStamped.header.frame_id = "base_link" ;
-        transformStamped.child_frame_id = "velodyne_front_link";
+        transformStamped.child_frame_id = "base_link";
 
         transformStamped.transform.translation.x = transform.transform.translation.x;
         transformStamped.transform.translation.y = transform.transform.translation.y;
@@ -67,7 +62,7 @@ void replace_msg::StaticTfPublisher(rosbag::Bag &bag, bool do_publish) {
         private_nh.param<float>("new_roll", new_roll, 0.);
         private_nh.param<float>("new_pitch", new_pitch, 0.);
         private_nh.param<float>("new_yaw", new_yaw, 0.);
-        ROS_ERROR_STREAM("offseting velodyne tf yaw "<<new_yaw << " pitch " << new_pitch << " roll " << new_roll);
+        ROS_ERROR_STREAM("Offseting ouster tf yaw "<<new_yaw << " pitch " << new_pitch << " roll " << new_roll);
 
         new_yaw += yaw;
         new_pitch += p;
@@ -88,7 +83,7 @@ void replace_msg::StaticTfPublisher(rosbag::Bag &bag, bool do_publish) {
         tf2::Transform odom_tf_2;
         tf2::fromMsg(transformStamped.transform, odom_tf_2);
         odom_tf_2.getBasis().getRPY(r,p,yaw);
-        ROS_ERROR_STREAM("velodyne tf now reads yaw "<<yaw << " pitch " << p << " roll " << r);
+        ROS_ERROR_STREAM("Ouster tf now reads yaw "<<yaw << " pitch " << p << " roll " << r);
 
       }else if(transform.child_frame_id == "utm"){
         continue;
@@ -111,18 +106,14 @@ void replace_msg::StaticTfPublisher(rosbag::Bag &bag, bool do_publish) {
     ROS_INFO_STREAM("Loaded static TF tree data");
 }
 
-
-void
-replace_msg::CameraInfoPublisher(ros::Publisher &publisher, const rosbag::MessageInstance &message,
+void replace_msg::CameraInfoPublisher(ros::Publisher &publisher, const rosbag::MessageInstance &message,
                                  const sensor_msgs::CameraInfoConstPtr &scaled_info_msg) {
     std::string const& topic = message.getTopic();
     ros::Time const& header_time = message.getTime();
     out_bag.write(topic, header_time, scaled_info_msg);
 }
 
-
-void
-replace_msg::MessagePublisher(ros::Publisher &publisher, const rosbag::MessageInstance &message) {
+void replace_msg::MessagePublisher(ros::Publisher &publisher, const rosbag::MessageInstance &message) {
     std::string const& topic = message.getTopic();
     ros::Time const& header_time = message.getTime();
 
@@ -133,8 +124,6 @@ replace_msg::MessagePublisher(ros::Publisher &publisher, const rosbag::MessageIn
           // compute horizon transforms from imu msg and publish them
           geometry_msgs::TransformStamped baselink, footprint;
           imu2horizontf(msg, baselink, footprint);
-//          tf_broadcaster.sendTransform(baselink);
-//          tf_broadcaster.sendTransform(footprint);
 
           tf2_msgs::TFMessage tf_horizon;
           tf_horizon.transforms.push_back(baselink);

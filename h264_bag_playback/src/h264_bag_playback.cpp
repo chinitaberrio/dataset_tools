@@ -44,12 +44,8 @@ int main(int argc, char **argv) {
 
   return 0;
 }
-
-
 namespace dataset_toolkit
 {
-
-
 h264_bag_playback::h264_bag_playback() :
         transformer_(std::make_shared<tf2_ros::Buffer>(ros::Duration(10000.))),
         horizonInBuffer(false),
@@ -62,16 +58,13 @@ h264_bag_playback::h264_bag_playback() :
 
 }
 
-
 void h264_bag_playback::onInit() {
   timer = public_nh.createTimer(ros::Duration(0.1), &h264_bag_playback::timerCallback, this);
 }
 
-
 void h264_bag_playback::timerCallback(const ros::TimerEvent& event) {
   ReadFromBag();
 }
-
 
 void h264_bag_playback::init_playback(std::string input_bag_file_name) {
 
@@ -88,11 +81,9 @@ void h264_bag_playback::init_playback(std::string input_bag_file_name) {
       ROS_INFO_STREAM("Output images will NOT be scaled");
     }
 
-
     // parameters to scale, or limit the speed of playback to realtime
     private_nh.param("scale_playback_speed", scale_playback_speed, 1.0);
     private_nh.param("limit_playback_speed", limit_playback_speed, true);
-
 
     if (input_bag_file_name == "") {
       // determine the bag file to playback
@@ -107,12 +98,10 @@ void h264_bag_playback::init_playback(std::string input_bag_file_name) {
       return;
     }
 
-
     // Attempt to open the bag file
     bags.push_back(std::make_shared<BagContainer>());
     if (!bags.back()->Open(bag_file_name))
       return;
-
 
     // determine the file prefixes and initialise each camera
     std::string file_prefix = remove_last_of_string(bag_file_name, ".");
@@ -150,7 +139,6 @@ void h264_bag_playback::init_playback(std::string input_bag_file_name) {
       }
     }
 
-
     // make a video object for each video file
     for (auto file_name: file_list) {
       // extract the camera name from the filename
@@ -167,7 +155,6 @@ void h264_bag_playback::init_playback(std::string input_bag_file_name) {
       }
     }
 
-
     // determine whether to apply a time bias correction
     // (some datasets have an offset between the nvidia computer time and the ROS time)
     std::map<std::string, double> dataset_time_correction;
@@ -182,7 +169,6 @@ void h264_bag_playback::init_playback(std::string input_bag_file_name) {
     else {
       ROS_INFO_STREAM("No time correction parameters available for this dataset");
     }
-
 
     // assume the "main" bag covers the most important times
     rosbag::View overall_view(bags.front()->bag);
@@ -249,7 +235,6 @@ void h264_bag_playback::init_playback(std::string input_bag_file_name) {
         }
     }
 
-
     if(requested_start_time == bag_start_time){
       ROS_INFO_STREAM("Playback starts from the beginning: " << boost::posix_time::to_iso_extended_string(requested_start_time.toBoost()));
     } else {
@@ -280,14 +265,9 @@ void h264_bag_playback::init_playback(std::string input_bag_file_name) {
 
 }
 
-
-
 void h264_bag_playback::CloseBags() {
   bag_writer.CloseBags();
 }
-
-
-
 
 void h264_bag_playback::OpenBags() {
 
@@ -297,7 +277,6 @@ void h264_bag_playback::OpenBags() {
     bag->iter = bag->view->begin();
     AdvertiseTopics(bag->view);
   }
-
 
   int dataset_event_count = 0;
 
@@ -329,10 +308,9 @@ void h264_bag_playback::OpenBags() {
 
   ROS_INFO_STREAM("Loaded " << dataset_event_count << " events");
 
-
   // creat a tf bag view object so that we can view future tf msgs
   std::vector<std::string> tf_topics{"tf", "/tf"};
-  std::vector<std::string> imu_topics{"vn100/imu", "/vn100/imu", "/ibeo_interface_node/xsens/IMU"};
+  std::vector<std::string> imu_topics{"/gps/imu", "/ouster/imu", "/ibeo_interface_node/xsens/IMU"};
 
   // override static transforms as required from the ros parameters
   std::vector<std::string> static_tf_corrections = private_nh.param<std::vector<std::string>>("static_tf_corrections", {});
@@ -375,8 +353,6 @@ void h264_bag_playback::OpenBags() {
   }
 }
 
-
-
 void h264_bag_playback::SeekTime(ros::Time seek_time) {
 
   ros::Time earliest_time = ros::TIME_MAX;
@@ -418,9 +394,7 @@ void h264_bag_playback::SeekTime(ros::Time seek_time) {
 
 }
 
-
 void h264_bag_playback::ResyncPlaybackTime() {
-
   // resync the playback speed after this change
   time_sync_real = ros::Time::now();
   time_sync_latest = ros::Time::now();
@@ -428,7 +402,6 @@ void h264_bag_playback::ResyncPlaybackTime() {
 }
 
 bool h264_bag_playback::ReadNextPacket() {
-
   // find the next in time order
   ros::Time earliest_time = ros::TIME_MAX;
 
@@ -517,8 +490,6 @@ bool h264_bag_playback::ReadNextPacket() {
           camera_time_bias_flag = true;
         }
 
-  ////      std::cout << "calculating time bias for " << camera_name << " as " << camera_time_bias << ", " << frame_info_msg->header.stamp.toNSec() << ", " <<  nvidia_timestamp.toNSec() << std::endl;
-
         if (fabs(camera_time_bias.toSec()) > 0.5) {
           adjusted_image_stamp = nvidia_timestamp + camera_time_bias - time_offset_;
         }
@@ -557,8 +528,6 @@ bool h264_bag_playback::ReadNextPacket() {
           current_video.frame_counter++;
 
           //if (current_video.valid_camera_info) {
-
-
             // Check if someone wants the corrected (undistorted) camera images
             if (current_video.valid_camera_info && videos[camera_name].corrected_publisher.getNumSubscribers() > 0) {
 
@@ -638,7 +607,7 @@ bool h264_bag_playback::ReadNextPacket() {
     MessagePublisher(pub_iter->second, m);
     ros::spinOnce();
   }
-  else if (topic == "vn100/imu" || topic == "/vn100/imu" || topic == "xsens/IMU" || topic == "/xsens/IMU" || topic == "/ibeo_interface_node/xsens/IMU") {
+  else if (topic == "/gps/imu" || topic == "/ouster/imu" || topic == "/ibeo_interface_node/xsens/IMU") {
 
     auto msg = m.instantiate<sensor_msgs::Imu>();
 
@@ -696,7 +665,6 @@ bool h264_bag_playback::ReadNextPacket() {
     ros::spinOnce();
   }
 
-
   if (limit_playback_speed && (topic == "tf" || topic == "/tf")) {
 
     if (ros::Time::now() - time_sync_latest > ros::Duration(.5)){
@@ -739,7 +707,6 @@ bool h264_bag_playback::ReadNextPacket() {
   return true;
 }
 
-
 void h264_bag_playback::ReadFromBag() {
 
   OpenBags();
@@ -756,28 +723,20 @@ void h264_bag_playback::ReadFromBag() {
   ROS_INFO_STREAM("completed playback");
 }
 
-
-void
-h264_bag_playback::CameraInfoPublisher(ros::Publisher &publisher, const rosbag::MessageInstance &message,
+void h264_bag_playback::CameraInfoPublisher(ros::Publisher &publisher, const rosbag::MessageInstance &message,
                                        const sensor_msgs::CameraInfoConstPtr &scaled_info_msg) {
   publisher.publish(scaled_info_msg);
 }
 
-
-void
-h264_bag_playback::MessagePublisher(ros::Publisher &publisher, const rosbag::MessageInstance &message) {
+void h264_bag_playback::MessagePublisher(ros::Publisher &publisher, const rosbag::MessageInstance &message) {
   publisher.publish(message);
 }
 
-
-void
-h264_bag_playback::ImagePublisher(image_transport::Publisher &publisher, const sensor_msgs::ImageConstPtr &message) {
+void h264_bag_playback::ImagePublisher(image_transport::Publisher &publisher, const sensor_msgs::ImageConstPtr &message) {
   publisher.publish(message);
 }
 
-
-void
-h264_bag_playback::AdvertiseTopics(std::shared_ptr<rosbag::View> view) {
+void h264_bag_playback::AdvertiseTopics(std::shared_ptr<rosbag::View> view) {
 
   // Create a publisher and advertise for all of our message types
   for(const rosbag::ConnectionInfo* c: view->getConnections())
@@ -811,7 +770,6 @@ h264_bag_playback::AdvertiseTopics(std::shared_ptr<rosbag::View> view) {
     }
   }
 }
-
 
   PLUGINLIB_EXPORT_CLASS(dataset_toolkit::h264_bag_playback, nodelet::Nodelet);
 

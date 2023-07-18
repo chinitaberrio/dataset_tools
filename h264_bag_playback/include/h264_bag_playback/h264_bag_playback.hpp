@@ -36,11 +36,7 @@
 #include "bag_container.hpp"
 #include "bag_writer.hpp"
 #include "video.hpp"
-
-
 namespace dataset_toolkit {
-
-
   class h264_bag_playback : public nodelet::Nodelet {
   public:
 
@@ -102,7 +98,6 @@ namespace dataset_toolkit {
     ros::Time time_sync_playback;
     ros::Time time_sync_latest;
 
-
     std::map <std::string, std::list<dataset_msgs::DatasetEvent::ConstPtr>> dataset_events;
 
     BagWriter bag_writer;
@@ -119,14 +114,15 @@ namespace dataset_toolkit {
     // A publisher for each topic in the bag
     std::map <std::string, ros::Publisher> publishers;
 
-
     // These are hard coded for the time being to fit the ACFR campus dataset
-    std::map <std::string, std::string> frame_id_dict = {{"A0", "gmsl_centre_link"},
-                                                         {"A1", "gmsl_left_link"},
-                                                         {"A2", "gmsl_right_link"},
-                                                         {"A3", "gmsl_back_link"},
-                                                         {"B0", "gmsl_left_side_link"},
-                                                         {"B1", "gmsl_right_side_link"}};
+    std::map <std::string, std::string> frame_id_dict = {{"A0", "port_a_cam_0"},
+                                                         {"A1", "port_a_cam_1"},
+                                                         {"B0", "port_b_cam_0"},
+                                                         {"B1", "port_b_cam_1"},
+                                                         {"C0", "port_c_cam_0"},
+                                                         {"C1", "port_c_cam_1"},
+                                                         {"D0", "port_d_cam_0"},
+                                                         {"D1", "port_c_cam_1"}};
 
 
     virtual void MessagePublisher(ros::Publisher &publisher, const rosbag::MessageInstance &message);
@@ -135,7 +131,6 @@ namespace dataset_toolkit {
 
     virtual void CameraInfoPublisher(ros::Publisher &publisher, const rosbag::MessageInstance &message,
                                      const sensor_msgs::CameraInfoConstPtr &scaled_info_msg);
-
 
     image_transport::ImageTransport image_transport;
 
@@ -169,10 +164,7 @@ namespace dataset_toolkit {
     BagStaticTransformBroadcaster tf_static;
 
     std::string additional_namespace;
-
   };
-
 }
-
 
 #endif

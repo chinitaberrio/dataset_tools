@@ -2,7 +2,6 @@
 
 #include <boost/algorithm/string.hpp>
 
-
 void BagStaticTransformBroadcaster::ApplyCorrection(std::string correction_string, std::shared_ptr<tf2_ros::Buffer> &transformer_) {
     
     std::stringstream ss(correction_string);
@@ -71,12 +70,7 @@ void BagStaticTransformBroadcaster::ApplyCorrection(std::string correction_strin
 //        odom_tf_2.getBasis().getRPY(r,p,yaw);
 //        ROS_ERROR_STREAM("velodyne tf now reads yaw "<<yaw << " pitch " << p << " roll " << r);
 
-
-
-
-
 void BagStaticTransformBroadcaster::StaticTfPublisher(rosbag::Bag &bag, bool do_publish, std::shared_ptr<tf2_ros::Buffer> &transformer_) {
-
     //static tf2_ros::StaticTransformBroadcaster static_broadcaster;
 
     ros::NodeHandle private_nh("~");
@@ -154,7 +148,6 @@ void BagStaticTransformBroadcaster::StaticTfPublisher(rosbag::Bag &bag, bool do_
     n_static_tf++;
     if (n_static_tf > 10)
     break;
-
   }
   ROS_INFO_STREAM("Loaded static TF tree data");
 }
