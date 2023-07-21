@@ -536,7 +536,7 @@ bool h264_bag_playback::ReadNextPacket() {
 
                 cv::Mat output_image;
 
-                if (current_video.camera_info_msg.distortion_model == "rational_polynomial") {
+                if (current_video.camera_info_msg.distortion_model == "plumb_bob") {
                   cv::undistort(new_frame, output_image, current_video.camera_matrix, current_video.distance_coeffs);
                 }
                 else if (current_video.camera_info_msg.distortion_model == "equidistant") {

@@ -65,7 +65,7 @@ void Video::InitialiseCameraInfo(sensor_msgs::CameraInfo &camera_info) {
 
   cv::Mat modified_camera_matrix;
 
-  if (camera_info_msg.distortion_model == "rational_polynomial") {
+  if (camera_info_msg.distortion_model == "plumb_bob") {
     camera_matrix = cv::Mat(3, 3, CV_64F, &camera_info_msg.K[0]);
     distance_coeffs = cv::Mat(4, 1, CV_64F, &camera_info_msg.D[0]);
   }
@@ -97,7 +97,7 @@ void Video::InitialiseCameraInfo(sensor_msgs::CameraInfo &camera_info) {
     //sensor_msgs::CameraInfo rectified_camera_info;
 
     //corrected_camera_info_msg.header = image_msg->header;
-    corrected_camera_info_msg.distortion_model = "rational_polynomial"; // change to rational_polynomial after rectification
+    corrected_camera_info_msg.distortion_model = "plumb_bob"; // change to pulmb_bob after rectification
     corrected_camera_info_msg.height = camera_info_msg.height;
     corrected_camera_info_msg.width = camera_info_msg.width;
     corrected_camera_info_msg.K[0] = modified_camera_matrix.at<double>(0,0);
@@ -128,7 +128,7 @@ bool Video::InitialiseVideo(std::string camera_name, std::string video_filename,
   file_name = video_filename;
   video_device = cv::VideoCapture(file_name);
   frame_counter = 0;
-  std::string topic_prefix = "/gmsl/";
+  std::string topic_prefix = "/sekonix_camera/";
   topic_prefix += camera_name;
 
   uncorrected_publisher = image_transport.advertise(additional_namespace + topic_prefix + "/image_color", 1);
