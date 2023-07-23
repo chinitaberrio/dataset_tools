@@ -587,13 +587,13 @@ bool h264_bag_playback::ReadNextPacket() {
               auto image_message = cv_ptr->toImageMsg();
 
 
-              if (current_video.corrected_camera_info_msg.distortion_model != "") {
+              //if (current_video.corrected_camera_info_msg.distortion_model != "") {
 
                 current_video.camera_info_msg.header = image_message->header;
                 sensor_msgs::CameraInfo::ConstPtr new_info_message(
                     new sensor_msgs::CameraInfo(current_video.camera_info_msg));
                 CameraInfoPublisher(current_video.uncorrected_info_publisher, m, new_info_message);
-              }
+              //}
 
               ImagePublisher(current_video.uncorrected_publisher, image_message);
               ros::spinOnce();
