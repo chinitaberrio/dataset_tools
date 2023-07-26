@@ -115,14 +115,14 @@ namespace dataset_toolkit {
     std::map <std::string, ros::Publisher> publishers;
 
     // These are hard coded for the time being to fit the ACFR campus dataset
-    std::map <std::string, std::string> frame_id_dict = {{"A0", "port_a_cam_0"},
-                                                         {"A1", "port_a_cam_1"},
-                                                         {"B0", "port_b_cam_0"},
-                                                         {"B1", "port_b_cam_1"},
-                                                         {"C0", "port_c_cam_0"},
-                                                         {"C1", "port_c_cam_1"},
-                                                         {"D0", "port_d_cam_0"},
-                                                         {"D1", "port_c_cam_1"}};
+    std::map <std::string, std::string> frame_id_dict = {{"port_a_cam_0", "port_a_camera_0"},
+                                                         {"port_a_cam_1", "port_a_camera_1"},
+                                                         {"port_b_cam_0", "port_b_camera_0"},
+                                                         {"port_b_cam_1", "port_b_camera_1"},
+                                                         {"port_c_cam_0", "port_c_camera_0"},
+                                                         {"port_c_cam_1", "port_c_camera_1"},
+                                                         {"port_d_cam_0", "port_d_camera_0"},
+                                                         {"port_c_cam_1", "port_c_camera_1"}};
 
 
     virtual void MessagePublisher(ros::Publisher &publisher, const rosbag::MessageInstance &message);
