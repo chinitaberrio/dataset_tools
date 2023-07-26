@@ -50,10 +50,10 @@ To build on a computer with ROS installed (tested on [Melodic](http://wiki.ros.o
 
 6. Launch the GUI  
    ```bash
-   roslaunch dataset_playback run.launch
+   roslaunch dataset_playback run.launch folder:='/media/stephany/Expansion/Chippendale_V2/2023-07-25-11-18-51'
    ```  
 
-   ![Dataset Tools GUI](https://gitlab.acfr.usyd.edu.au/its/dataset_metapackage/-/raw/master/screenshots/gui.png)  
+   ![Dataset Tools GUI](https://github.com/chinitaberrio/dataset_tools/blob/main/images/Dataset_Gui.png)  
 
 7. In a new terminal, launch RViZ  
    ```bash
@@ -62,19 +62,17 @@ To build on a computer with ROS installed (tested on [Melodic](http://wiki.ros.o
 
 8. Use the GUI to select a .bag file for playback  
 
-   ![Select a file for playback](https://gitlab.acfr.usyd.edu.au/its/dataset_metapackage/-/raw/master/screenshots/dialog.png)  
+   ![Select a file for playback](https://github.com/chinitaberrio/dataset_tools/blob/main/images/Select.png)  
 
-   ![Select a file for playback](https://gitlab.acfr.usyd.edu.au/its/dataset_metapackage/-/raw/master/screenshots/file-selected.png)  
+   ![Select a file for playback](https://github.com/chinitaberrio/dataset_tools/blob/main/images/Status.png)  
 
 9. Add topics you want to visualise in RViZ, e.g. ```/sekonix_camera/port_a_cam_0/image_color```, ```/ouster/points``` (you may also want to change the Fixed Frame to ```base_link```)  
 
 10. Use the GUI to play/pause/stop the .bag file playback or use the scrubber at the bottom of the GUI to move around the .bag file faster  
    
-    ![Playback in RViZ](https://gitlab.acfr.usyd.edu.au/its/dataset_metapackage/-/raw/master/screenshots/rviz.png)  
+    ![Playback in RViZ](https://github.com/chinitaberrio/dataset_tools/blob/main/images/Rviz.png)  
 
-An extract of playback from a dataset file (Week 1) is shown below  
-
-![Playback in RViZ](https://gitlab.acfr.usyd.edu.au/its/dataset_metapackage/-/raw/master/screenshots/rviz-large.gif)  
+ 
 
 
 
