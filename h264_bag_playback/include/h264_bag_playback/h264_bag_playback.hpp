@@ -122,7 +122,7 @@ namespace dataset_toolkit {
                                                          {"port_c_cam_0", "port_c_camera_0"},
                                                          {"port_c_cam_1", "port_c_camera_1"},
                                                          {"port_d_cam_0", "port_d_camera_0"},
-                                                         {"port_c_cam_1", "port_c_camera_1"}};
+                                                         {"port_d_cam_1", "port_d_camera_1"}};
 
 
     virtual void MessagePublisher(ros::Publisher &publisher, const rosbag::MessageInstance &message);

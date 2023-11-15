@@ -145,8 +145,9 @@ namespace dataset_toolkit {
           ROS_INFO_STREAM("Opened video file size[" << cv_ptr->image.cols << "," << cv_ptr->image.rows << "]: " << video_file_name);
         }
 
-
+        
         output_videos[topic_name].write(cv_ptr->image);
+        
       }
       else {
         message_count[topic_name] += 1;
@@ -165,12 +166,13 @@ namespace dataset_toolkit {
       std::string frame_info_topic = topic_name + "/frame_info";
       std::string camera_info_topic = topic_name + "/camera_info";
 
+      
       this->WriteMessage(bag_name, frame_info_topic, msg_time, frame_info);
-
+      
       if (camera_info_msg) {
         this->WriteMessage(bag_name, camera_info_topic, msg_time, camera_info_msg);
       }
-
+      
       return true;
     }
 

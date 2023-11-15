@@ -345,7 +345,7 @@ void h264_bag_playback::OpenBags() {
   if (imu_view) {
     imu_view->ResetPlayback();
   }
-
+  
   // calculate the total number of messages
   for (auto bag: bags) {
     if (bag->view)
